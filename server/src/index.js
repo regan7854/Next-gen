@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import app from './server.js';
 import { connectDatabase, closeDatabase } from './lib/database.js';
+import { connectPrismaIfConfigured, disconnectPrisma } from './lib/prisma.js';
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ if (!process.env.JWT_SECRET) {
 
 try {
   await connectDatabase();
+  await connectPrismaIfConfigured();
 } catch (error) {
   console.error('Failed to connect to database:', error);
   process.exit(1);
@@ -29,6 +31,7 @@ process.on('SIGTERM', async () => {
   console.log('SIGTERM received, closing server...');
   server.close(async () => {
     await closeDatabase();
+    await disconnectPrisma();
     process.exit(0);
   });
 });

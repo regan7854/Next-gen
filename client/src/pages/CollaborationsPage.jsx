@@ -127,6 +127,26 @@ export default function CollaborationsPage() {
     ? allRequests.filter((r) => r.status === statusFilter)
     : allRequests;
 
+  const formatTenure = (request) => {
+    if (request.tenureDays == null) return 'Lifertime';
+    if (request.tenureValue && request.tenureUnit) {
+      return `${request.tenureValue} ${request.tenureUnit}`;
+    }
+    return `${request.tenureDays} days`;
+  };
+
+  const getDateRangeText = (request) => {
+    if (request.status !== 'accepted' || !request.acceptedAt) return null;
+    const start = new Date(request.acceptedAt);
+    const startText = start.toLocaleDateString();
+    if (request.tenureDays == null) {
+      return `${startText} → Lifertime`;
+    }
+    const end = new Date(start);
+    end.setDate(end.getDate() + Number(request.tenureDays));
+    return `${startText} → ${end.toLocaleDateString()}`;
+  };
+
   return (
     <div className="page-container">
       <div className="page-header">
@@ -195,6 +215,14 @@ export default function CollaborationsPage() {
 
               {r.budgetOffered > 0 && (
                 <span className="collab-budget">Budget: NPR {r.budgetOffered.toLocaleString()}</span>
+              )}
+
+              <span className="collab-budget">
+                Tenure: {formatTenure(r)}
+              </span>
+
+              {getDateRangeText(r) && (
+                <span className="collab-budget">Duration: {getDateRangeText(r)}</span>
               )}
 
               {/* Actions for received pending requests */}

@@ -26,7 +26,14 @@ export default function ProfilePage() {
   const [campaigns, setCampaigns] = useState([]);
   const [reviews, setReviews] = useState({ reviews: [], avgRating: null, reviewCount: 0 });
   const [showCollabForm, setShowCollabForm] = useState(false);
-  const [collabForm, setCollabForm] = useState({ message: '', campaignTitle: '', budgetOffered: '' });
+  const [collabForm, setCollabForm] = useState({
+    message: '',
+    campaignTitle: '',
+    budgetOffered: '',
+    tenureType: 'fixed',
+    tenureValue: '20',
+    tenureUnit: 'days',
+  });
   const [collabSent, setCollabSent] = useState(false);
   const [showAddCampaign, setShowAddCampaign] = useState(false);
   const [campaignForm, setCampaignForm] = useState({ title: '', description: '', platform: '', resultsSummary: '', reach: '', engagement: '' });
@@ -62,6 +69,9 @@ export default function ProfilePage() {
         receiverId: userId,
         ...collabForm,
         budgetOffered: Number(collabForm.budgetOffered) || 0,
+        tenureType: collabForm.tenureType,
+        tenureValue: Number(collabForm.tenureValue) || 0,
+        tenureUnit: collabForm.tenureUnit,
       });
       setCollabSent(true);
       setShowCollabForm(false);
@@ -352,6 +362,36 @@ export default function ProfilePage() {
                 <span className="field-label">Budget Offered (NPR)</span>
                 <input type="number" value={collabForm.budgetOffered} onChange={(e) => setCollabForm((p) => ({ ...p, budgetOffered: e.target.value }))} placeholder="0" />
               </label>
+              <label className="field">
+                <span className="field-label">Collaboration Tenure</span>
+                <select value={collabForm.tenureType} onChange={(e) => setCollabForm((p) => ({ ...p, tenureType: e.target.value }))}>
+                  <option value="fixed">Fixed Term</option>
+                  <option value="lifertime">Lifertime</option>
+                </select>
+              </label>
+              {collabForm.tenureType === 'fixed' && (
+                <div className="form-grid">
+                  <label className="field">
+                    <span className="field-label">How many</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={collabForm.tenureValue}
+                      onChange={(e) => setCollabForm((p) => ({ ...p, tenureValue: e.target.value }))}
+                      placeholder="20"
+                      required
+                    />
+                  </label>
+                  <label className="field">
+                    <span className="field-label">Unit</span>
+                    <select value={collabForm.tenureUnit} onChange={(e) => setCollabForm((p) => ({ ...p, tenureUnit: e.target.value }))}>
+                      <option value="days">Days</option>
+                      <option value="months">Months</option>
+                      <option value="years">Years</option>
+                    </select>
+                  </label>
+                </div>
+              )}
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={() => setShowCollabForm(false)}>Cancel</button>
                 <button type="submit" className="btn-primary"><Send size={14} /> Send Request</button>

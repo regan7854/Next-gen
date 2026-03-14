@@ -1,0 +1,15 @@
+{
+  "name": "nextgen-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "setup": "npm --prefix server install && npm --prefix client install",
+    "ensure:env": "node scripts/ensure-server-env.mjs",
+    "dev": "npm run ensure:env && concurrently -n server,client -c cyan,magenta \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "backend": "npm run ensure:env && npm --prefix server run dev",
+    "frontend": "npm --prefix client run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

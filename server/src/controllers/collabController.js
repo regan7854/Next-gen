@@ -6,7 +6,30 @@ export async function sendRequest(req, res, next) {
   try {
     const db = getDb();
     const senderId = req.userId;
-    const { receiverId, message, campaignTitle, budgetOffered } = req.body;
+    const { receiverId, message, campaignTitle, budgetOffered, tenureType, tenureValue, tenureUnit } = req.body;
+
+    const normalizedType = tenureType === 'lifertime' ? 'lifertime' : 'fixed';
+    let normalizedTenureValue = null;
+    let normalizedTenureUnit = null;
+    let normalizedTenureDays = null;
+
+    if (normalizedType === 'fixed') {
+      const unit = ['days', 'months', 'years'].includes(tenureUnit) ? tenureUnit : 'days';
+      const value = Number(tenureValue);
+      if (!Number.isInteger(value) || value < 1) {
+        return res.status(400).json({ message: 'Tenure value must be a positive whole number' });
+      }
+
+      const multiplier = unit === 'days' ? 1 : unit === 'months' ? 30 : 365;
+      const days = value * multiplier;
+      if (days < 20) {
+        return res.status(400).json({ message: 'Tenure must be at least 20 days' });
+      }
+
+      normalizedTenureValue = value;
+      normalizedTenureUnit = unit;
+      normalizedTenureDays = days;
+    }
 
     if (senderId === receiverId) {
       return res.status(400).json({ message: 'Cannot send request to yourself' });
@@ -24,9 +47,19 @@ export async function sendRequest(req, res, next) {
 
     const id = randomUUID();
     await dbRun(db,
-      `INSERT INTO collaboration_requests (id, sender_id, receiver_id, message, campaign_title, budget_offered)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, senderId, receiverId, message || '', campaignTitle || '', budgetOffered || 0]
+      `INSERT INTO collaboration_requests (id, sender_id, receiver_id, message, campaign_title, budget_offered, tenure_days, tenure_value, tenure_unit)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        senderId,
+        receiverId,
+        message || '',
+        campaignTitle || '',
+        budgetOffered || 0,
+        normalizedTenureDays,
+        normalizedTenureValue,
+        normalizedTenureUnit,
+      ]
     );
 
     // create notification for receiver
@@ -35,7 +68,9 @@ export async function sendRequest(req, res, next) {
       `INSERT INTO notifications (id, user_id, type, title, body, related_id)
        VALUES (?, ?, 'collab_request', ?, ?, ?)`,
       [randomUUID(), receiverId, 'New collaboration request',
-        `${sender?.display_name || 'Someone'} wants to collaborate with you — Budget: NPR ${(budgetOffered || 0).toLocaleString()}`, id]
+        `${sender?.display_name || 'Someone'} wants to collaborate with you — Budget: NPR ${(budgetOffered || 0).toLocaleString()} • Tenure: ${normalizedType === 'lifertime' ? 'Lifertime' : `${normalizedTenureValue} ${normalizedTenureUnit}`}`,
+        id,
+      ]
     );
 
     res.status(201).json({ id, message: 'Request sent' });
@@ -74,9 +109,19 @@ export async function respondToRequest(req, res, next) {
       return res.status(400).json({ message: 'Request already resolved' });
     }
 
-    await dbRun(db,
-      `UPDATE collaboration_requests SET status = ?, message = COALESCE(?, message), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [status, message, requestId]
+    await dbRun(
+      db,
+      `UPDATE collaboration_requests
+       SET status = ?,
+           message = COALESCE(?, message),
+           accepted_at = CASE
+             WHEN ? = 'accepted' AND accepted_at IS NULL THEN CURRENT_TIMESTAMP
+             WHEN ? <> 'accepted' THEN NULL
+             ELSE accepted_at
+           END,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [status, message, status, status, requestId]
     );
 
     // Determine who to notify
@@ -256,6 +301,10 @@ function formatRequest(r) {
     status: r.status,
     campaignTitle: r.campaign_title,
     budgetOffered: r.budget_offered,
+    tenureDays: r.tenure_days,
+    tenureValue: r.tenure_value,
+    tenureUnit: r.tenure_unit,
+    acceptedAt: r.accepted_at,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };

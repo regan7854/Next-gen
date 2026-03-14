@@ -146,10 +146,32 @@ export async function initializeTables() {
       status TEXT NOT NULL DEFAULT 'pending',
       campaign_title TEXT,
       budget_offered INTEGER,
+      tenure_days INTEGER,
+      tenure_value INTEGER,
+      tenure_unit TEXT,
+      accepted_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  const collabColumns = await dbAll(db, "PRAGMA table_info(collaboration_requests)");
+  const hasTenureDays = collabColumns.some((column) => column.name === 'tenure_days');
+  if (!hasTenureDays) {
+    await run('ALTER TABLE collaboration_requests ADD COLUMN tenure_days INTEGER');
+  }
+  const hasTenureValue = collabColumns.some((column) => column.name === 'tenure_value');
+  if (!hasTenureValue) {
+    await run('ALTER TABLE collaboration_requests ADD COLUMN tenure_value INTEGER');
+  }
+  const hasTenureUnit = collabColumns.some((column) => column.name === 'tenure_unit');
+  if (!hasTenureUnit) {
+    await run('ALTER TABLE collaboration_requests ADD COLUMN tenure_unit TEXT');
+  }
+  const hasAcceptedAt = collabColumns.some((column) => column.name === 'accepted_at');
+  if (!hasAcceptedAt) {
+    await run('ALTER TABLE collaboration_requests ADD COLUMN accepted_at DATETIME');
+  }
 
   /* ── Campaigns / portfolio items ── */
   await run(`

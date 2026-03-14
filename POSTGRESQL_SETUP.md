@@ -50,10 +50,11 @@ CLIENT_ORIGIN=http://localhost:5173
 ```bash
 cd server
 npm install
+npm run prisma:migrate -- --name init
 npm start
 ```
 
-The app will automatically create the `users` table on first run!
+Prisma will create/update all tables from `server/prisma/schema.prisma`.
 
 ## Verify Connection
 

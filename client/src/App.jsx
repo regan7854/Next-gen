@@ -19,11 +19,16 @@ function PublicRoute({ children }) {
   return isAuthenticated ? <Navigate to="/home" replace /> : children;
 }
 
+function RootRoute() {
+  const { isAuthenticated } = useAuth();
+  return <Navigate to={isAuthenticated ? '/home' : '/auth'} replace />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        <Route path="/" element={<Navigate to="/auth" replace />} />
+        <Route path="/" element={<RootRoute />} />
         <Route path="/auth" element={<PublicRoute><AuthPage /></PublicRoute>} />
 
         {/* All protected pages share the Navbar layout */}
