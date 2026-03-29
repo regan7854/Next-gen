@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import LogoMark from './LogoMark.jsx';
+import NotificationBell from './NotificationBell.jsx';
 import { LayoutDashboard, Compass, Handshake, User, LogOut, TrendingUp, Sun, Moon } from 'lucide-react';
 
 export default function Navbar() {
@@ -42,6 +43,8 @@ export default function Navbar() {
           </nav>
 
           <div className="navbar-right">
+            <NotificationBell />
+            
             <button type="button" className="btn-logout-nav" onClick={logout}>
               <LogOut size={14} />
               Log out

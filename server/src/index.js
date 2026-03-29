@@ -16,10 +16,16 @@ if (!process.env.JWT_SECRET) {
 
 try {
   await connectDatabase();
+} catch (error) {
+  console.error('Failed to connect to SQLite database:', error);
+  process.exit(1);
+}
+
+try {
   await connectPrismaIfConfigured();
 } catch (error) {
-  console.error('Failed to connect to database:', error);
-  process.exit(1);
+  // Keep server alive on SQLite even if PostgreSQL is unreachable.
+  console.warn('Continuing without PostgreSQL/Prisma:', error.message);
 }
 
 const server = app.listen(PORT, () => {
