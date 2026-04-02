@@ -32,12 +32,23 @@ const server = app.listen(PORT, () => {
   console.log(`API ready on port ${PORT}`);
 });
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, closing server...');
-  server.close(async () => {
-    await closeDatabase();
-    await disconnectPrisma();
-    process.exit(0);
-  });
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Stop the other process or set a different PORT in .env`);
+  } else {
+    console.error('Server error:', err);
+  }
+  process.exit(1);
 });
+
+// Graceful shutdown
+for (const signal of ['SIGTERM', 'SIGINT']) {
+  process.on(signal, async () => {
+    console.log(`${signal} received, closing server...`);
+    server.close(async () => {
+      await closeDatabase();
+      await disconnectPrisma();
+      process.exit(0);
+    });
+  });
+}

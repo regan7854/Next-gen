@@ -22,6 +22,18 @@
   align-items: center;
 }
 
+.landing-navbar-inner .btn-primary {
+  width: auto;
+  margin-top: 0;
+  padding: 0.6rem 1.4rem;
+  background-color: var(--primary-color, #6c5ce7);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .navbar-brand {
   display: flex;
   align-items: center;

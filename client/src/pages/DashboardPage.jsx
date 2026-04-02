@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Handshake, Mail, Users, Star, Search, MessageSquare, UserCircle,
-  Zap, Clock, ArrowRight, Sparkles, Bell,
+  Zap, Clock, ArrowRight, Sparkles, Bell, TrendingUp, Globe,
 } from 'lucide-react';
 import { getMyCollabRequests, getNotifications as fetchNotifs, getRecommendations } from '../services/apiClient.js';
 
@@ -56,14 +56,14 @@ export default function DashboardPage() {
   const needsOnboarding = profile && (profile.role === 'user' || !profile.role);
 
   return (
-    <div className="page-container">
+    <div className="page-container dashboard">
       {/* Onboarding nudge */}
       {needsOnboarding && (
         <div className="onboarding-banner" onClick={() => navigate('/onboarding')}>
           <Sparkles size={20} />
           <div>
             <strong>Complete your profile</strong>
-            <p>Set up your influencer or brand profile to start matching</p>
+            <p>Set up your influencer or brand profile to unlock collaborations and matches.</p>
           </div>
           <ArrowRight size={18} />
         </div>
@@ -72,8 +72,9 @@ export default function DashboardPage() {
       {/* Hero */}
       <div className="dash-hero">
         <div className="dash-hero-text">
-          <h1>{greeting}</h1>
-          <p>Here&apos;s what&apos;s happening with your NextGen account today.</p>
+          <p className="dash-hero-greeting">Good to see you again</p>
+          <h1>{greeting} <span className="wave">👋</span></h1>
+          <p className="dash-hero-sub">Here&apos;s an overview of your NextGen Collaborate activity and insights.</p>
         </div>
         {profile && <div className="dash-hero-avatar">{initial}</div>}
       </div>
@@ -84,29 +85,29 @@ export default function DashboardPage() {
         <>
           {/* Stats */}
           <div className="stats-grid">
-            <div className="stat-card clickable" onClick={() => navigate('/collaborations?filter=accepted')}>
-              <span className="stat-icon"><Handshake size={20} /></span>
+            <div className="stat-card stat-collabs clickable" onClick={() => navigate('/collaborations?filter=accepted')}>
+              <span className="stat-icon"><Handshake size={22} /></span>
               <div>
                 <span className="stat-number">{stats.collabs}</span>
                 <span className="stat-label">Collaborations</span>
               </div>
             </div>
-            <div className="stat-card clickable" onClick={() => navigate('/collaborations?filter=pending')}>
-              <span className="stat-icon"><Mail size={20} /></span>
+            <div className="stat-card stat-pending clickable" onClick={() => navigate('/collaborations?filter=pending')}>
+              <span className="stat-icon"><Mail size={22} /></span>
               <div>
                 <span className="stat-number">{stats.messages}</span>
                 <span className="stat-label">Pending Requests</span>
               </div>
             </div>
-            <div className="stat-card clickable" onClick={() => navigate('/collaborations')}>
-              <span className="stat-icon"><Users size={20} /></span>
+            <div className="stat-card stat-connections clickable" onClick={() => navigate('/collaborations')}>
+              <span className="stat-icon"><Users size={22} /></span>
               <div>
                 <span className="stat-number">{stats.connections}</span>
                 <span className="stat-label">Connections</span>
               </div>
             </div>
-            <div className="stat-card clickable" onClick={() => navigate('/profile')}>
-              <span className="stat-icon"><Star size={20} /></span>
+            <div className="stat-card stat-reviews clickable" onClick={() => navigate('/profile')}>
+              <span className="stat-icon"><Star size={22} /></span>
               <div>
                 <span className="stat-number">{stats.reviews}</span>
                 <span className="stat-label">Reviews</span>
@@ -115,20 +116,28 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick actions */}
-          <div className="card">
+          <div className="card quick-actions-card">
             <h3><Zap size={18} /> Quick Actions</h3>
             <div className="actions-grid">
-              <Link to="/discover" className="action-card">
-                <span className="action-icon"><Search size={18} /></span>
-                <span>Find Partners</span>
+              <Link to="/discover" className="action-card action-discover">
+                <span className="action-icon"><Search size={20} /></span>
+                <span className="action-title">Find Partners</span>
+                <span className="action-desc">Browse influencers &amp; brands</span>
               </Link>
-              <Link to="/collaborations" className="action-card">
-                <span className="action-icon"><MessageSquare size={18} /></span>
-                <span>Requests</span>
+              <Link to="/collaborations" className="action-card action-requests">
+                <span className="action-icon"><MessageSquare size={20} /></span>
+                <span className="action-title">View Requests</span>
+                <span className="action-desc">Manage your collaborations</span>
               </Link>
-              <Link to="/profile" className="action-card">
-                <span className="action-icon"><UserCircle size={18} /></span>
-                <span>My Profile</span>
+              <Link to="/profile" className="action-card action-profile">
+                <span className="action-icon"><UserCircle size={20} /></span>
+                <span className="action-title">My Profile</span>
+                <span className="action-desc">Edit your public profile</span>
+              </Link>
+              <Link to="/trending" className="action-card action-trending">
+                <span className="action-icon"><TrendingUp size={20} /></span>
+                <span className="action-title">Trending</span>
+                <span className="action-desc">See who&apos;s rising fast</span>
               </Link>
             </div>
           </div>
@@ -175,7 +184,7 @@ export default function DashboardPage() {
 
           {/* Recent activity */}
           <div className="card">
-            <h3><Clock size={18} /> Activity</h3>
+            <h3><Clock size={18} /> Recent Activity</h3>
             <div className="activity-list">
               <div className="activity-item">
                 <div className="activity-dot"></div>
@@ -184,6 +193,15 @@ export default function DashboardPage() {
                   <span className="activity-time">Just now</span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Platform info banner */}
+          <div className="platform-banner">
+            <Globe size={20} />
+            <div>
+              <strong>NextGen Collaborate</strong>
+              <p>Connect with influencers and brands. Build meaningful partnerships that grow your audience and business.</p>
             </div>
           </div>
         </>

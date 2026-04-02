@@ -6,6 +6,7 @@ import profileRouter from './routes/profiles.js';
 import discoverRouter from './routes/discover.js';
 import collabRouter from './routes/collabs.js';
 import campaignRouter from './routes/campaigns.js';
+import adminRouter from './routes/admin.js';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use('/api/profiles', profileRouter);
 app.use('/api/discover', discoverRouter);
 app.use('/api/collabs', collabRouter);
 app.use('/api/campaigns', campaignRouter);
+app.use('/api/admin', adminRouter);
 
 app.use((err, _req, res, _next) => {
   // Generic error handler so clients receive consistent responses.

@@ -1,13 +1,11 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { useTheme } from '../context/ThemeContext.jsx';
 import LogoMark from './LogoMark.jsx';
 import NotificationBell from './NotificationBell.jsx';
-import { LayoutDashboard, Compass, Handshake, User, LogOut, TrendingUp, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Compass, Handshake, LogOut, TrendingUp } from 'lucide-react';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
-  const { dark, toggle } = useTheme();
   const initial = user?.displayName?.[0]?.toUpperCase() || '?';
 
   return (
@@ -34,11 +32,7 @@ export default function Navbar() {
             </NavLink>
             <NavLink to="/collaborations" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
               <Handshake size={16} />
-              <span className="nav-label">Collabs</span>
-            </NavLink>
-            <NavLink to="/profile" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-              <User size={16} />
-              <span className="nav-label">Profile</span>
+              <span className="nav-label">Collaborations</span>
             </NavLink>
           </nav>
 
@@ -50,17 +44,11 @@ export default function Navbar() {
               Log out
             </button>
 
-            <div className="theme-toggle" onClick={toggle} title={dark ? 'Switch to light mode' : 'Switch to dark mode'}>
-              <Sun size={13} className="theme-icon sun" />
-              <div className={`theme-track${dark ? ' dark' : ''}`}>
-                <div className="theme-thumb" />
+            <Link to="/profile" title="My Profile">
+              <div className="nav-avatar">
+                {initial}
               </div>
-              <Moon size={13} className="theme-icon moon" />
-            </div>
-
-            <div className="nav-avatar">
-              {initial}
-            </div>
+            </Link>
           </div>
         </div>
       </header>

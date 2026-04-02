@@ -37,18 +37,6 @@
   --border-radius-xl: 16px;
 }
 
-/* Dark mode */
-[data-theme="dark"],
-html.dark {
-  --bg-light: #1f2937;
-  --bg-secondary: #111827;
-  --bg-tertiary: #374151;
-  --border-light: #4b5563;
-  --text-primary: #f9fafb;
-  --text-secondary: #d1d5db;
-  --text-tertiary: #9ca3af;
-}
-
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background-color: var(--bg-secondary);
