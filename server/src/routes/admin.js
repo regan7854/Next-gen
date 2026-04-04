@@ -49,25 +49,53 @@ router.get('/stats', adminAuth, async (_req, res, next) => {
     const totalUsers = await dbGet(db, 'SELECT COUNT(*) AS count FROM users');
     const influencers = await dbGet(db, "SELECT COUNT(*) AS count FROM users WHERE role = 'influencer'");
     const brands = await dbGet(db, "SELECT COUNT(*) AS count FROM users WHERE role = 'brand'");
-    const totalCollabs = await dbGet(db, 'SELECT COUNT(*) AS count FROM collaboration_requests');
-    const pendingCollabs = await dbGet(db, "SELECT COUNT(*) AS count FROM collaboration_requests WHERE status = 'pending'");
-    const acceptedCollabs = await dbGet(db, "SELECT COUNT(*) AS count FROM collaboration_requests WHERE status = 'accepted'");
+    const totalCollaborations = await dbGet(db, 'SELECT COUNT(*) AS count FROM collaboration_requests');
+    const totalConnections = await dbGet(db, "SELECT COUNT(*) AS count FROM collaboration_requests WHERE status = 'accepted'");
+    const pendingRequests = await dbGet(db, "SELECT COUNT(*) AS count FROM collaboration_requests WHERE status = 'pending'");
+    const activeCollabs = await dbGet(db, "SELECT COUNT(*) AS count FROM collaboration_requests WHERE status = 'accepted'");
     const totalNotifications = await dbGet(db, 'SELECT COUNT(*) AS count FROM notifications');
-
-    /* recent users (last week) */
-    const recentUsers = await dbGet(db,
+    const totalCategories = await dbGet(db,
+      "SELECT COUNT(DISTINCT category) AS count FROM influencer_profiles WHERE category IS NOT NULL AND category != ''");
+    const newUsersWeek = await dbGet(db,
       "SELECT COUNT(*) AS count FROM users WHERE created_at >= datetime('now', '-7 days')");
 
     res.json({
       totalUsers: totalUsers.count,
       influencers: influencers.count,
       brands: brands.count,
-      totalCollabs: totalCollabs.count,
-      pendingCollabs: pendingCollabs.count,
-      acceptedCollabs: acceptedCollabs.count,
+      totalCollaborations: totalCollaborations.count,
+      totalConnections: totalConnections.count,
+      pendingRequests: pendingRequests.count,
+      activeCollabs: activeCollabs.count,
       totalNotifications: totalNotifications.count,
-      recentUsers: recentUsers.count,
+      totalCategories: totalCategories.count,
+      newUsersWeek: newUsersWeek.count,
     });
+  } catch (err) { next(err); }
+});
+
+/* ───── Dashboard Activity ───── */
+
+router.get('/activity', adminAuth, async (_req, res, next) => {
+  try {
+    const db = getDb();
+
+    const recentUsers = await dbAll(db,
+      `SELECT id, display_name, email, role, created_at
+       FROM users ORDER BY created_at DESC LIMIT 5`
+    );
+
+    const recentCollabs = await dbAll(db,
+      `SELECT cr.id, cr.status, cr.created_at,
+              s.display_name AS sender_name,
+              r.display_name AS receiver_name
+       FROM collaboration_requests cr
+       LEFT JOIN users s ON s.id = cr.sender_id
+       LEFT JOIN users r ON r.id = cr.receiver_id
+       ORDER BY cr.created_at DESC LIMIT 5`
+    );
+
+    res.json({ recentUsers, recentCollabs });
   } catch (err) { next(err); }
 });
 
@@ -268,14 +296,51 @@ router.delete('/notifications/:id', adminAuth, async (req, res, next) => {
 
 /* ───── Reports ───── */
 
+/* Helper: fill missing dates with 0 so charts have continuous lines */
+function fillDates(rows, days = 30) {
+  const map = new Map(rows.map(r => [r.date, r.count]));
+  const result = [];
+  const now = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    result.push({ date: key, count: map.get(key) || 0 });
+  }
+  return result;
+}
+
+/* Cumulative user count per day (total users up to that day) */
 router.get('/reports/growth', adminAuth, async (_req, res, next) => {
   try {
     const db = getDb();
-    const rows = await dbAll(db,
-      `SELECT strftime('%Y-%m', created_at) AS month, COUNT(*) AS count
-       FROM users GROUP BY month ORDER BY month DESC LIMIT 12`
+
+    const userGrowthRaw = await dbAll(db,
+      `SELECT strftime('%Y-%m-%d', created_at) AS date, COUNT(*) AS count
+       FROM users
+       WHERE created_at >= datetime('now', '-30 days')
+       GROUP BY date ORDER BY date`
     );
-    res.json({ growth: rows.reverse() });
+
+    const collabGrowthRaw = await dbAll(db,
+      `SELECT strftime('%Y-%m-%d', created_at) AS date, COUNT(*) AS count
+       FROM collaboration_requests
+       WHERE created_at >= datetime('now', '-30 days')
+       GROUP BY date ORDER BY date`
+    );
+
+    const notifGrowthRaw = await dbAll(db,
+      `SELECT strftime('%Y-%m-%d', created_at) AS date, COUNT(*) AS count
+       FROM notifications
+       WHERE created_at >= datetime('now', '-30 days')
+       GROUP BY date ORDER BY date`
+    );
+
+    res.json({
+      userGrowth: fillDates(userGrowthRaw),
+      collabGrowth: fillDates(collabGrowthRaw),
+      notifGrowth: fillDates(notifGrowthRaw),
+    });
   } catch (err) { next(err); }
 });
 
