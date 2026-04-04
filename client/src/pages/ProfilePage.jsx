@@ -37,10 +37,12 @@ export default function ProfilePage() {
   const [collabSent, setCollabSent] = useState(false);
   const [showAddCampaign, setShowAddCampaign] = useState(false);
   const [campaignForm, setCampaignForm] = useState({ title: '', description: '', platform: '', resultsSummary: '', reach: '', engagement: '' });
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
+      setError(null);
       try {
         if (isOwn) {
           const { user: u } = await fetchProfile();
@@ -57,7 +59,10 @@ export default function ProfilePage() {
           const revData = await getReviewsFor(userId).catch(() => ({ reviews: [], avgRating: null, reviewCount: 0 }));
           setReviews(revData);
         }
-      } catch { /* ignore */ }
+      } catch (err) {
+        console.error('ProfilePage load error:', err);
+        setError(err.response?.data?.message || 'Failed to load profile');
+      }
       setLoading(false);
     })();
   }, [userId]);
@@ -101,6 +106,7 @@ export default function ProfilePage() {
   };
 
   if (loading) return <div className="page-container"><p className="muted">Loading profile...</p></div>;
+  if (error) return <div className="page-container"><p className="muted">{error}</p></div>;
   if (!profileData) return <div className="page-container"><p className="muted">Profile not found</p></div>;
 
   const { user: pUser, profile, rating, reviewCount } = profileData;

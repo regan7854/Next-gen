@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { AdminAuthProvider } from './context/AdminAuthContext.jsx';
+import { NotificationProvider } from './context/NotificationContext.jsx';
 
 // Admin imports
 import AdminProtectedRoute from './components/admin/AdminProtectedRoute.jsx';
@@ -31,6 +32,7 @@ import NotificationsPage from './pages/NotificationsPage.jsx';
 
 function App() {
   return (
+    <AuthProvider>
       <Routes>
         {/* ═══ ADMIN ROUTES ═══ */}
         <Route path="/admin" element={<AdminAuthProvider><AdminLogin /></AdminAuthProvider>} />
@@ -47,15 +49,11 @@ function App() {
 
         {/* ═══ PUBLIC ROUTES ═══ */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/auth" element={
-          <AuthProvider><AuthPage /></AuthProvider>
-        } />
+        <Route path="/auth" element={<AuthPage />} />
 
         {/* ═══ PROTECTED CUSTOMER ROUTES ═══ */}
         <Route element={
-          <AuthProvider>
-            <ProtectedRoute><Navbar /></ProtectedRoute>
-          </AuthProvider>
+          <ProtectedRoute><NotificationProvider><Navbar /></NotificationProvider></ProtectedRoute>
         }>
           <Route path="/home" element={<DashboardPage />} />
           <Route path="/discover" element={<DiscoverPage />} />
@@ -70,6 +68,7 @@ function App() {
         {/* ═══ CATCH-ALL — Must be LAST ═══ */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+    </AuthProvider>
   );
 }
 

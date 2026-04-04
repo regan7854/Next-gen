@@ -9,6 +9,18 @@ export const apiClient = axios.create({
   },
 });
 
+// Ensure the auth token is always attached, regardless of useEffect timing
+apiClient.interceptors.request.use((config) => {
+  try {
+    const raw = localStorage.getItem('nextgen-auth');
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (parsed?.token) {
+      config.headers.Authorization = `Bearer ${parsed.token}`;
+    }
+  } catch { /* ignore corrupt storage */ }
+  return config;
+});
+
 /* ── Auth ── */
 export async function registerUser(payload) {
   const { data } = await apiClient.post('/auth/register', payload);

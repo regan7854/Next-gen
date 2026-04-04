@@ -217,11 +217,13 @@
   transition: all var(--transition-normal);
   text-align: center;
   position: relative;
+  cursor: pointer;
 }
 
 .step-card:hover {
   border-color: var(--primary-color);
   box-shadow: var(--shadow-lg);
+  transform: translateY(-3px);
 }
 
 .step-number {

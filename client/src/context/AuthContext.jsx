@@ -8,7 +8,12 @@ export function AuthProvider({ children }) {
   const [authState, setAuthState] = useState(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : { token: null, user: null };
+      const parsed = raw ? JSON.parse(raw) : { token: null, user: null };
+      // Set header synchronously so it's ready before first render
+      if (parsed.token) {
+        apiClient.defaults.headers.common.Authorization = `Bearer ${parsed.token}`;
+      }
+      return parsed;
     } catch (error) {
       console.warn('Failed to parse auth storage', error);
       return { token: null, user: null };
