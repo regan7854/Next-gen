@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRouter from './routes/auth.js';
 import profileRouter from './routes/profiles.js';
 import discoverRouter from './routes/discover.js';
+import discoveryRouter from './routes/discovery.js';
 import collabRouter from './routes/collabs.js';
 import campaignRouter from './routes/campaigns.js';
 import adminRouter from './routes/admin.js';
@@ -29,6 +30,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/profiles', profileRouter);
 app.use('/api/discover', discoverRouter);
+app.use('/api/discovery', discoveryRouter);
 app.use('/api/collabs', collabRouter);
 app.use('/api/campaigns', campaignRouter);
 app.use('/api/admin', adminRouter);

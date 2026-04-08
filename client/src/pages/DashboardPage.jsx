@@ -72,9 +72,8 @@ export default function DashboardPage() {
       {/* Hero */}
       <div className="dash-hero">
         <div className="dash-hero-text">
-          <p className="dash-hero-greeting">Good to see you again</p>
-          <h1>{greeting} <span className="wave">👋</span></h1>
-          <p className="dash-hero-sub">Here&apos;s an overview of your NextGen Collaborate activity and insights.</p>
+          <h1>Welcome back, {profile?.displayName || 'there'}!</h1>
+          <p className="dash-hero-sub">Ready to see what&apos;s new in your NextGen Collaborate workspace?</p>
         </div>
         {profile && <div className="dash-hero-avatar">{initial}</div>}
       </div>
