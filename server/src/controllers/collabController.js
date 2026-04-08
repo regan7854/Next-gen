@@ -145,7 +145,7 @@ export async function sendCounterOffer(req, res, next) {
     const db = getDb();
     const userId = req.userId;
     const { requestId } = req.params;
-    const { message, proposedBudget } = req.body;
+    const { message, proposedBudget, proposedTenureValue, proposedTenureUnit } = req.body;
 
     const request = await dbGet(db,
       'SELECT * FROM collaboration_requests WHERE id = ?',
@@ -163,28 +163,40 @@ export async function sendCounterOffer(req, res, next) {
       return res.status(400).json({ message: 'Cannot negotiate on a resolved request' });
     }
 
-    // Update the request status to negotiating and update the budget
+    // Compute tenure days if tenure is being proposed
+    let newTenureValue = proposedTenureValue ? Number(proposedTenureValue) : null;
+    let newTenureUnit = proposedTenureUnit || null;
+    let newTenureDays = null;
+    if (newTenureValue && newTenureUnit) {
+      const multiplier = newTenureUnit === 'days' ? 1 : newTenureUnit === 'months' ? 30 : 365;
+      newTenureDays = newTenureValue * multiplier;
+    }
+
+    // Update the request status to negotiating and update budget + tenure
     await dbRun(db,
-      `UPDATE collaboration_requests SET status = 'negotiating', budget_offered = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [proposedBudget || request.budget_offered, requestId]
+      `UPDATE collaboration_requests SET status = 'negotiating', budget_offered = ?,
+       tenure_value = COALESCE(?, tenure_value), tenure_unit = COALESCE(?, tenure_unit),
+       tenure_days = COALESCE(?, tenure_days), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [proposedBudget || request.budget_offered, newTenureValue, newTenureUnit, newTenureDays, requestId]
     );
 
     // Save the negotiation message
     const msgId = randomUUID();
     await dbRun(db,
-      `INSERT INTO negotiation_messages (id, request_id, sender_id, message, proposed_budget, action)
-       VALUES (?, ?, ?, ?, ?, 'counter')`,
-      [msgId, requestId, userId, message || '', proposedBudget || 0]
+      `INSERT INTO negotiation_messages (id, request_id, sender_id, message, proposed_budget, proposed_tenure_value, proposed_tenure_unit, action)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'counter')`,
+      [msgId, requestId, userId, message || '', proposedBudget || 0, newTenureValue, newTenureUnit]
     );
 
     // Notify the other party
     const otherUserId = isSender ? request.receiver_id : request.sender_id;
     const counterParty = await dbGet(db, 'SELECT display_name FROM users WHERE id = ?', [userId]);
+    const tenureText = newTenureValue && newTenureUnit ? ` • Tenure: ${newTenureValue} ${newTenureUnit}` : '';
     await dbRun(db,
       `INSERT INTO notifications (id, user_id, type, title, body, related_id)
        VALUES (?, ?, 'negotiation', ?, ?, ?)`,
       [randomUUID(), otherUserId, 'Counter-offer received',
-        `${counterParty?.display_name || 'Someone'} proposed NPR ${(proposedBudget || 0).toLocaleString()} — "${(message || '').slice(0, 80)}"`, requestId]
+        `${counterParty?.display_name || 'Someone'} proposed NPR ${(proposedBudget || 0).toLocaleString()}${tenureText} — "${(message || '').slice(0, 80)}"`, requestId]
     );
 
     res.json({ message: 'Counter-offer sent', id: msgId });
@@ -218,6 +230,8 @@ export async function getNegotiationHistory(req, res, next) {
     res.json({
       requestId,
       originalBudget: request.budget_offered,
+      originalTenureValue: request.tenure_value,
+      originalTenureUnit: request.tenure_unit,
       currentStatus: request.status,
       messages: messages.map((m) => ({
         id: m.id,
@@ -226,6 +240,8 @@ export async function getNegotiationHistory(req, res, next) {
         senderColor: m.sender_color,
         message: m.message,
         proposedBudget: m.proposed_budget,
+        proposedTenureValue: m.proposed_tenure_value,
+        proposedTenureUnit: m.proposed_tenure_unit,
         action: m.action,
         createdAt: m.created_at,
       })),

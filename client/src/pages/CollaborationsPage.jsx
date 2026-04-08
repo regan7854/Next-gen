@@ -23,7 +23,7 @@ export default function CollaborationsPage() {
 
   // Negotiation state
   const [negotiateModal, setNegotiateModal] = useState(null);
-  const [negotiateForm, setNegotiateForm] = useState({ proposedBudget: '', message: '' });
+  const [negotiateForm, setNegotiateForm] = useState({ proposedBudget: '', proposedTenureValue: '', proposedTenureUnit: 'months', message: '' });
   const [negotiationHistory, setNegotiationHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [negotiateLoading, setNegotiateLoading] = useState(false);
@@ -51,7 +51,12 @@ export default function CollaborationsPage() {
 
   const openNegotiateModal = async (request) => {
     setNegotiateModal(request);
-    setNegotiateForm({ proposedBudget: request.budgetOffered || '', message: '' });
+    setNegotiateForm({
+      proposedBudget: request.budgetOffered || '',
+      proposedTenureValue: request.tenureValue || '',
+      proposedTenureUnit: request.tenureUnit || 'months',
+      message: '',
+    });
     setHistoryLoading(true);
     try {
       const data = await getNegotiationHistory(request.id);
@@ -67,12 +72,20 @@ export default function CollaborationsPage() {
     try {
       await sendCounterOffer(negotiateModal.id, {
         proposedBudget: Number(negotiateForm.proposedBudget) || 0,
+        proposedTenureValue: Number(negotiateForm.proposedTenureValue) || null,
+        proposedTenureUnit: negotiateForm.proposedTenureUnit || null,
         message: negotiateForm.message,
       });
       // Refresh history
       const data = await getNegotiationHistory(negotiateModal.id);
       setNegotiationHistory(data.messages || []);
-      setNegotiateForm({ proposedBudget: data.messages?.length ? data.messages[data.messages.length - 1].proposedBudget : '', message: '' });
+      const lastMsg = data.messages?.length ? data.messages[data.messages.length - 1] : null;
+      setNegotiateForm({
+        proposedBudget: lastMsg ? lastMsg.proposedBudget : '',
+        proposedTenureValue: lastMsg?.proposedTenureValue || negotiateForm.proposedTenureValue,
+        proposedTenureUnit: lastMsg?.proposedTenureUnit || negotiateForm.proposedTenureUnit,
+        message: '',
+      });
       await loadRequests();
     } catch { /* ignore */ }
     setNegotiateLoading(false);
@@ -327,6 +340,10 @@ export default function CollaborationsPage() {
                 <span className="negotiate-value">NPR {(negotiateModal.budgetOffered || 0).toLocaleString()}</span>
               </div>
               <div className="negotiate-summary-item">
+                <span className="negotiate-label">Tenure</span>
+                <span className="negotiate-value">{formatTenure(negotiateModal)}</span>
+              </div>
+              <div className="negotiate-summary-item">
                 <span className="negotiate-label">Status</span>
                 <span className="negotiate-status" style={{ color: statusColor(negotiateModal.status) }}>
                   {negotiateModal.status}
@@ -361,6 +378,11 @@ export default function CollaborationsPage() {
                           : <DollarSign size={14} />
                         }
                         NPR {(msg.proposedBudget || 0).toLocaleString()}
+                        {msg.proposedTenureValue && msg.proposedTenureUnit && (
+                          <span style={{ fontSize: '0.82rem', fontWeight: 500, color: 'var(--text-secondary)', marginLeft: 8 }}>
+                            • {msg.proposedTenureValue} {msg.proposedTenureUnit}
+                          </span>
+                        )}
                       </div>
                       {msg.message && <p className="negotiate-msg-text">{msg.message}</p>}
                     </div>
@@ -384,6 +406,29 @@ export default function CollaborationsPage() {
                     required
                   />
                 </label>
+                <div className="form-grid">
+                  <label className="field">
+                    <span className="field-label">Proposed Tenure</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={negotiateForm.proposedTenureValue}
+                      onChange={(e) => setNegotiateForm((p) => ({ ...p, proposedTenureValue: e.target.value }))}
+                      placeholder="e.g. 12"
+                    />
+                  </label>
+                  <label className="field">
+                    <span className="field-label">Tenure Unit</span>
+                    <select
+                      value={negotiateForm.proposedTenureUnit}
+                      onChange={(e) => setNegotiateForm((p) => ({ ...p, proposedTenureUnit: e.target.value }))}
+                    >
+                      <option value="days">Days</option>
+                      <option value="months">Months</option>
+                      <option value="years">Years</option>
+                    </select>
+                  </label>
+                </div>
                 <label className="field">
                   <span className="field-label">Message</span>
                   <textarea

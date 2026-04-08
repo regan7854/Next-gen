@@ -224,10 +224,20 @@ export async function initializeTables() {
       sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       message TEXT,
       proposed_budget INTEGER DEFAULT 0,
+      proposed_tenure_value INTEGER,
+      proposed_tenure_unit TEXT,
       action TEXT NOT NULL DEFAULT 'counter',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  /* ── Migrate: add tenure columns to negotiation_messages if missing ── */
+  try {
+    await run(`ALTER TABLE negotiation_messages ADD COLUMN proposed_tenure_value INTEGER`);
+  } catch { /* column already exists */ }
+  try {
+    await run(`ALTER TABLE negotiation_messages ADD COLUMN proposed_tenure_unit TEXT`);
+  } catch { /* column already exists */ }
 
   /* ── Admin accounts ── */
   await run(`
