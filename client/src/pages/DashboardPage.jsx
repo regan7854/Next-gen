@@ -169,7 +169,16 @@ export default function DashboardPage() {
               <h3><Bell size={18} /> Recent Notifications</h3>
               <div className="activity-list">
                 {notifications.map((n) => (
-                  <div key={n.id} className="activity-item">
+                  <div
+                    key={n.id}
+                    className="activity-item"
+                    style={{ cursor: ['collab_request', 'collab_response'].includes(n.type) ? 'pointer' : undefined }}
+                    onClick={() => {
+                      if (['collab_request', 'collab_response'].includes(n.type)) {
+                        navigate('/collaborations');
+                      }
+                    }}
+                  >
                     <div className="activity-dot"></div>
                     <div>
                       <p className="activity-text">{n.body || n.title}</p>

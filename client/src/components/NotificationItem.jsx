@@ -1,6 +1,8 @@
+import { useNavigate } from 'react-router-dom';
 import { X, MessageSquare, Handshake, TrendingUp, Users, Star, CheckCircle } from 'lucide-react';
 
 export default function NotificationItem({ notification, onMarkAsRead, onDelete }) {
+  const navigate = useNavigate();
   const getIcon = (type) => {
     const iconProps = { size: 20, strokeWidth: 1.5 };
     switch (type) {
@@ -31,8 +33,21 @@ export default function NotificationItem({ notification, onMarkAsRead, onDelete 
 
   const isRead = notification.is_read;
 
+  const isCollabNotif = ['collab_request', 'collab_response'].includes(notification.type);
+
+  const handleClick = () => {
+    if (isCollabNotif) {
+      if (!isRead) onMarkAsRead(notification.id);
+      navigate('/collaborations');
+    }
+  };
+
   return (
-    <div className={`notification-item ${isRead ? 'read' : 'unread'}`}>
+    <div
+      className={`notification-item ${isRead ? 'read' : 'unread'}`}
+      style={{ cursor: isCollabNotif ? 'pointer' : undefined }}
+      onClick={handleClick}
+    >
       <div className="notification-icon">
         {getIcon(notification.type)}
       </div>
