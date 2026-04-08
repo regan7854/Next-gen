@@ -26,8 +26,8 @@ export default function AdminSidebar() {
     <aside className={`admin-sidebar${collapsed ? ' collapsed' : ''}`}>
       <div className="admin-sidebar-header">
         <div className="admin-sidebar-brand">
-          <LogoMark size={28} />
-          {!collapsed && <span>NextGen <small>Admin</small></span>}
+          {!collapsed ? <LogoMark height={60} /> : <LogoMark height={60} />}
+          {!collapsed && <small style={{fontSize:'0.7rem',color:'#888',marginLeft:'0.25rem'}}>Admin</small>}
         </div>
         <button className="sidebar-toggle" onClick={() => setCollapsed(c => !c)} title="Toggle sidebar">
           {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}

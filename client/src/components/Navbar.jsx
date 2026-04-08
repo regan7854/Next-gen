@@ -13,8 +13,7 @@ export default function Navbar() {
       <header className="navbar">
         <div className="navbar-inner">
           <NavLink to="/home" className="navbar-brand">
-            <LogoMark size={30} />
-            <span>NextGen</span>
+            <LogoMark height={72} />
           </NavLink>
 
           <nav className="navbar-links">

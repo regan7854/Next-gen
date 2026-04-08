@@ -1,13 +1,9 @@
-export default function LogoMark({ size = 40 }) {
-  const fs = Math.round(size * 0.38);
+export default function LogoMark({ height = 32 }) {
   return (
-    <div
-      className="logo-mark"
-      style={{ width: size, height: size, fontSize: fs }}
-      aria-label="NextGen"
-      role="img"
-    >
-      <span>N</span>
-    </div>
+    <img
+      src="/logo.png"
+      alt="NextGen"
+      style={{ height, width: 'auto', display: 'block' }}
+    />
   );
 }

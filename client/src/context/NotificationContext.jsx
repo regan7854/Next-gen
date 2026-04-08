@@ -1,25 +1,36 @@
-import { createContext, useContext, useState } from 'react';
-import { dummyNotifications } from '../data/dummyNotifications.js';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { getNotifications, markNotificationRead } from '../services/apiClient.js';
 
 const NotificationContext = createContext();
 
 export function NotificationProvider({ children }) {
-  const [notifications, setNotifications] = useState(dummyNotifications);
+  const [notifications, setNotifications] = useState([]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  useEffect(() => {
+    getNotifications()
+      .then(({ notifications }) => setNotifications(notifications || []))
+      .catch(() => setNotifications([]));
+  }, []);
 
-  const markAsRead = (id) => {
-    setNotifications(notifications.map(n =>
-      n.id === id ? { ...n, read: true } : n
-    ));
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  const markAsRead = async (id) => {
+    try {
+      await markNotificationRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
+    } catch {
+      // silently fail
+    }
   };
 
   const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+    notifications
+      .filter(n => !n.is_read)
+      .forEach(n => markAsRead(n.id));
   };
 
   const deleteNotification = (id) => {
-    setNotifications(notifications.filter(n => n.id !== id));
+    setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   return (

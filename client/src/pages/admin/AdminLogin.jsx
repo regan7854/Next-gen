@@ -34,8 +34,8 @@ export default function AdminLogin() {
     <div className="admin-login-page">
       <div className="admin-login-card">
         <div className="admin-login-header">
-          <LogoMark size={40} />
-          <h1>NextGen Admin</h1>
+          <LogoMark height={72} />
+          <h1>Admin</h1>
           <p>Sign in to access the admin dashboard</p>
         </div>
 

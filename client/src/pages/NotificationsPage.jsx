@@ -4,7 +4,7 @@ import { Bell, Trash2 } from 'lucide-react';
 
 export default function NotificationsPage() {
   const { notifications, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
     <div className="notifications-page">
@@ -20,10 +20,10 @@ export default function NotificationsPage() {
             {unreadCount > 0 && ` • ${unreadCount} unread`}
           </p>
         </div>
-        
+
         {unreadCount > 0 && (
           <div className="notifications-actions">
-            <button 
+            <button
               className="btn-secondary"
               onClick={markAllAsRead}
             >

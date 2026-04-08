@@ -97,12 +97,12 @@ export async function loginUser(req, res, next) {
     );
 
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Account not found' });
     }
 
     const passwordValid = await bcrypt.compare(password, user.password_hash);
     if (!passwordValid) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Password is incorrect' });
     }
 
     const token = createToken(user.id);

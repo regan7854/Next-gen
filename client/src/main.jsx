@@ -6,6 +6,7 @@ import './styles.css';
 import './styles/global.css';
 import './styles/components.css';
 import './styles/landing.css';
+import './styles/auth.css';
 import './styles/trending.css';
 import './styles/notifications.css';
 
