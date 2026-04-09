@@ -20,6 +20,10 @@ export default function AdminDashboard() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const timer = useRef(null);
 
+  const safeJson = async (res) => {
+    try { return await res.json(); } catch { return null; }
+  };
+
   const fetchAll = useCallback(async (showLoading = false) => {
     if (showLoading) setLoading(true);
     try {
@@ -28,9 +32,14 @@ export default function AdminDashboard() {
         apiFetch('/activity'),
         apiFetch('/reports/growth'),
       ]);
-      setStats(await statsRes.json());
-      setActivity(await activityRes.json());
-      setGrowth(await growthRes.json());
+      const [s, a, g] = await Promise.all([
+        safeJson(statsRes),
+        safeJson(activityRes),
+        safeJson(growthRes),
+      ]);
+      if (s) setStats(s);
+      if (a) setActivity(a);
+      if (g) setGrowth(g);
       setLastUpdated(new Date());
     } catch (err) {
       console.error('Dashboard load error:', err);

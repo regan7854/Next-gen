@@ -20,7 +20,7 @@ export function AdminAuthProvider({ children }) {
 
   async function verifyAdmin(token) {
     try {
-      const res = await fetch(`${API}/admin/verify`, {
+      const res = await fetch(`${API}/admin/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {

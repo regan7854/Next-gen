@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAdminAuth } from '../../context/AdminAuthContext.jsx';
 import LogoMark from '../../components/LogoMark.jsx';
-import { Shield, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function AdminLogin() {
   const { admin, login, error, loading } = useAdminAuth();
@@ -31,21 +31,43 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="admin-login-page">
-      <div className="admin-login-card">
-        <div className="admin-login-header">
-          <LogoMark height={72} />
-          <h1>Admin</h1>
-          <p>Sign in to access the admin dashboard</p>
+    <div className="adm-login-page">
+
+      {/* Left panel */}
+      <div className="adm-login-left">
+        <div className="adm-login-left-inner">
+          <LogoMark height={56} />
+          <h1 className="adm-login-left-title">
+            Admin Control<br />Center
+          </h1>
+          <p className="adm-login-left-sub">
+            Manage users, collaborations,<br />
+            and platform analytics<br />
+            all in one place.
+          </p>
+          <a className="adm-back" href="/">
+            ← Back to website
+          </a>
         </div>
+      </div>
 
-        {error && <div className="admin-login-error">{error}</div>}
+      {/* Right form */}
+      <div className="adm-login-right">
+        <div className="adm-login-form-wrap">
 
-        <form onSubmit={handleSubmit} className="admin-login-form">
-          <div className="admin-form-group">
-            <label htmlFor="admin-user">Username or Email</label>
-            <div className="admin-input-wrapper">
-              <Shield size={16} className="admin-input-icon" />
+          <div className="adm-login-brand-row">
+            <span className="adm-login-shield">&#128737;</span>
+            <span className="adm-login-brand-label">Admin Portal</span>
+          </div>
+
+          <h2 className="adm-login-form-title">Welcome back</h2>
+          <p className="adm-login-form-sub">Sign in to access the admin dashboard.</p>
+
+          {error && <div className="adm-login-error">{error}</div>}
+
+          <form onSubmit={handleSubmit} className="adm-login-form" autoComplete="off">
+            <div className="adm-login-field">
+              <label htmlFor="admin-user">Username or Email</label>
               <input
                 id="admin-user"
                 type="text"
@@ -56,39 +78,37 @@ export default function AdminLogin() {
                 autoFocus
               />
             </div>
-          </div>
 
-          <div className="admin-form-group">
-            <label htmlFor="admin-pass">Password</label>
-            <div className="admin-input-wrapper">
-              <button
-                type="button"
-                className="admin-pass-toggle"
-                onClick={() => setShowPass(s => !s)}
-                tabIndex={-1}
-              >
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-              <input
-                id="admin-pass"
-                type={showPass ? 'text' : 'password'}
-                placeholder="Enter password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-              />
+            <div className="adm-login-field">
+              <label htmlFor="admin-pass">Password</label>
+              <div className="adm-login-pass-wrap">
+                <input
+                  id="admin-pass"
+                  type={showPass ? 'text' : 'password'}
+                  placeholder="Enter password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  className="adm-login-eye"
+                  onClick={() => setShowPass(s => !s)}
+                  tabIndex={-1}
+                >
+                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
             </div>
-          </div>
 
-          <button type="submit" className="admin-login-btn" disabled={submitting}>
-            {submitting ? 'Signing in...' : 'Sign in to Dashboard'}
-          </button>
-        </form>
+            <button type="submit" className="adm-login-submit" disabled={submitting}>
+              {submitting ? 'Signing in…' : 'Sign in to Dashboard'}
+            </button>
+          </form>
 
-        <div className="admin-login-footer">
-          <a href="/">&larr; Back to Website</a>
         </div>
       </div>
+
     </div>
   );
 }
