@@ -84,7 +84,7 @@ a { text-decoration: none; color: inherit; }
 .navbar-links {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 2px;
   flex: 1;
 }
