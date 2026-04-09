@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { apiClient } from '../services/apiClient.js';
 import LogoMark from '../components/LogoMark.jsx';
+import Footer from '../components/Footer.jsx';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -234,6 +235,7 @@ export default function AuthPage() {
         </div>
       </div>
 
+      <Footer />
     </div>
   );
 }

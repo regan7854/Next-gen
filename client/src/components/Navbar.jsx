@@ -2,6 +2,7 @@ import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import LogoMark from './LogoMark.jsx';
 import NotificationBell from './NotificationBell.jsx';
+import Footer from './Footer.jsx';
 import { LayoutDashboard, Compass, Handshake, LogOut, TrendingUp } from 'lucide-react';
 
 export default function Navbar() {
@@ -55,6 +56,7 @@ export default function Navbar() {
       <main className="page-content">
         <Outlet />
       </main>
+      <Footer />
     </div>
   );
 }

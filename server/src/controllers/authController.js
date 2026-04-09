@@ -88,7 +88,6 @@ export async function loginUser(req, res, next) {
       return res.status(500).json({ message: 'Database unavailable' });
     }
 
-    // Check if identifier is an email (contains @) or a username
     const isEmail = normalizedIdentifier.includes('@');
     const user = await dbGet(
       db,

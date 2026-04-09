@@ -35,7 +35,6 @@ export async function sendRequest(req, res, next) {
       return res.status(400).json({ message: 'Cannot send request to yourself' });
     }
 
-    // check if a pending request already exists between these users
     const existing = await dbGet(db,
       `SELECT id FROM collaboration_requests
        WHERE sender_id = ? AND receiver_id = ? AND status IN ('pending', 'negotiating')`,
@@ -49,28 +48,17 @@ export async function sendRequest(req, res, next) {
     await dbRun(db,
       `INSERT INTO collaboration_requests (id, sender_id, receiver_id, message, campaign_title, budget_offered, tenure_days, tenure_value, tenure_unit)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        senderId,
-        receiverId,
-        message || '',
-        campaignTitle || '',
-        budgetOffered || 0,
-        normalizedTenureDays,
-        normalizedTenureValue,
-        normalizedTenureUnit,
-      ]
+      [id, senderId, receiverId, message || '', campaignTitle || '', budgetOffered || 0,
+        normalizedTenureDays, normalizedTenureValue, normalizedTenureUnit]
     );
 
-    // create notification for receiver
     const sender = await dbGet(db, 'SELECT display_name FROM users WHERE id = ?', [senderId]);
     await dbRun(db,
       `INSERT INTO notifications (id, user_id, type, title, body, related_id)
        VALUES (?, ?, 'collab_request', ?, ?, ?)`,
       [randomUUID(), receiverId, 'New collaboration request',
         `${sender?.display_name || 'Someone'} wants to collaborate with you — Budget: NPR ${(budgetOffered || 0).toLocaleString()} • Tenure: ${normalizedType === 'lifertime' ? 'Lifertime' : `${normalizedTenureValue} ${normalizedTenureUnit}`}`,
-        id,
-      ]
+        id]
     );
 
     res.status(201).json({ id, message: 'Request sent' });
@@ -83,34 +71,26 @@ export async function respondToRequest(req, res, next) {
     const db = getDb();
     const userId = req.userId;
     const { requestId } = req.params;
-    const { status, message } = req.body; // status: accepted, rejected, negotiating
+    const { status, message } = req.body;
 
-    // Allow both sender and receiver to respond during negotiation
-    const request = await dbGet(db,
-      'SELECT * FROM collaboration_requests WHERE id = ?',
-      [requestId]
-    );
+    const request = await dbGet(db, 'SELECT * FROM collaboration_requests WHERE id = ?', [requestId]);
     if (!request) return res.status(404).json({ message: 'Request not found' });
 
-    // Check the user is part of this request
     const isSender = request.sender_id === userId;
     const isReceiver = request.receiver_id === userId;
     if (!isSender && !isReceiver) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    // Senders can only respond during negotiation (accept counter, reject, or counter back)
     if (isSender && request.status !== 'negotiating') {
       return res.status(400).json({ message: 'You can only respond during negotiation' });
     }
 
-    // Receivers can respond to pending or negotiating
     if (isReceiver && request.status !== 'pending' && request.status !== 'negotiating') {
       return res.status(400).json({ message: 'Request already resolved' });
     }
 
-    await dbRun(
-      db,
+    await dbRun(db,
       `UPDATE collaboration_requests
        SET status = ?,
            message = COALESCE(?, message),
@@ -124,7 +104,6 @@ export async function respondToRequest(req, res, next) {
       [status, message, status, status, requestId]
     );
 
-    // Determine who to notify
     const otherUserId = isSender ? request.receiver_id : request.sender_id;
     const responder = await dbGet(db, 'SELECT display_name FROM users WHERE id = ?', [userId]);
     const statusText = status === 'accepted' ? 'accepted' : status === 'rejected' ? 'declined' : 'wants to negotiate';
@@ -147,10 +126,7 @@ export async function sendCounterOffer(req, res, next) {
     const { requestId } = req.params;
     const { message, proposedBudget, proposedTenureValue, proposedTenureUnit } = req.body;
 
-    const request = await dbGet(db,
-      'SELECT * FROM collaboration_requests WHERE id = ?',
-      [requestId]
-    );
+    const request = await dbGet(db, 'SELECT * FROM collaboration_requests WHERE id = ?', [requestId]);
     if (!request) return res.status(404).json({ message: 'Request not found' });
 
     const isSender = request.sender_id === userId;
@@ -163,7 +139,6 @@ export async function sendCounterOffer(req, res, next) {
       return res.status(400).json({ message: 'Cannot negotiate on a resolved request' });
     }
 
-    // Compute tenure days if tenure is being proposed
     let newTenureValue = proposedTenureValue ? Number(proposedTenureValue) : null;
     let newTenureUnit = proposedTenureUnit || null;
     let newTenureDays = null;
@@ -172,7 +147,6 @@ export async function sendCounterOffer(req, res, next) {
       newTenureDays = newTenureValue * multiplier;
     }
 
-    // Update the request status to negotiating and update budget + tenure
     await dbRun(db,
       `UPDATE collaboration_requests SET status = 'negotiating', budget_offered = ?,
        tenure_value = COALESCE(?, tenure_value), tenure_unit = COALESCE(?, tenure_unit),
@@ -180,7 +154,6 @@ export async function sendCounterOffer(req, res, next) {
       [proposedBudget || request.budget_offered, newTenureValue, newTenureUnit, newTenureDays, requestId]
     );
 
-    // Save the negotiation message
     const msgId = randomUUID();
     await dbRun(db,
       `INSERT INTO negotiation_messages (id, request_id, sender_id, message, proposed_budget, proposed_tenure_value, proposed_tenure_unit, action)
@@ -188,7 +161,6 @@ export async function sendCounterOffer(req, res, next) {
       [msgId, requestId, userId, message || '', proposedBudget || 0, newTenureValue, newTenureUnit]
     );
 
-    // Notify the other party
     const otherUserId = isSender ? request.receiver_id : request.sender_id;
     const counterParty = await dbGet(db, 'SELECT display_name FROM users WHERE id = ?', [userId]);
     const tenureText = newTenureValue && newTenureUnit ? ` • Tenure: ${newTenureValue} ${newTenureUnit}` : '';
@@ -210,10 +182,7 @@ export async function getNegotiationHistory(req, res, next) {
     const userId = req.userId;
     const { requestId } = req.params;
 
-    const request = await dbGet(db,
-      'SELECT * FROM collaboration_requests WHERE id = ?',
-      [requestId]
-    );
+    const request = await dbGet(db, 'SELECT * FROM collaboration_requests WHERE id = ?', [requestId]);
     if (!request) return res.status(404).json({ message: 'Request not found' });
     if (request.sender_id !== userId && request.receiver_id !== userId) {
       return res.status(403).json({ message: 'Not authorized' });

@@ -54,7 +54,6 @@ export async function leaveReview(req, res, next) {
       return res.status(400).json({ message: 'Cannot review yourself' });
     }
 
-    // check if already reviewed this collab
     if (collabRequestId) {
       const existing = await dbGet(db,
         'SELECT id FROM reviews WHERE reviewer_id = ? AND collab_request_id = ?',
@@ -70,7 +69,6 @@ export async function leaveReview(req, res, next) {
       [id, reviewerId, revieweeId, collabRequestId || null, rating, comment || '']
     );
 
-    // notify reviewee
     const reviewer = await dbGet(db, 'SELECT display_name FROM users WHERE id = ?', [reviewerId]);
     await dbRun(db,
       `INSERT INTO notifications (id, user_id, type, title, body, related_id)

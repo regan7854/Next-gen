@@ -131,14 +131,11 @@ export async function getPublicProfile(req, res, next) {
       profile = await dbGet(db, 'SELECT * FROM brand_profiles WHERE user_id = ?', [userId]);
     }
 
-    // fetch campaigns
     const campaigns = await dbAll(db, 'SELECT * FROM campaigns WHERE user_id = ? ORDER BY created_at DESC', [userId]);
 
-    // fetch avg rating
     const ratingRow = await dbGet(db,
       'SELECT AVG(rating) as avg_rating, COUNT(*) as review_count FROM reviews WHERE reviewee_id = ?', [userId]);
 
-    // fetch reviews
     const reviews = await dbAll(db,
       `SELECT r.*, u.display_name as reviewer_name, u.avatar_color as reviewer_color
        FROM reviews r JOIN users u ON r.reviewer_id = u.id
