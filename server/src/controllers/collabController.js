@@ -1,10 +1,10 @@
 import { randomUUID } from 'crypto';
-import { getDb, dbRun, dbGet, dbAll } from '../lib/database.js';
+import { getPrisma } from '../lib/prisma.js';
 
 /* ── Send collab request ── */
 export async function sendRequest(req, res, next) {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const senderId = req.userId;
     const { receiverId, message, campaignTitle, budgetOffered, tenureType, tenureValue, tenureUnit } = req.body;
 
@@ -35,31 +35,46 @@ export async function sendRequest(req, res, next) {
       return res.status(400).json({ message: 'Cannot send request to yourself' });
     }
 
-    const existing = await dbGet(db,
-      `SELECT id FROM collaboration_requests
-       WHERE sender_id = ? AND receiver_id = ? AND status IN ('pending', 'negotiating')`,
-      [senderId, receiverId]
-    );
+    const existing = await prisma.collaborationRequest.findFirst({
+      where: {
+        senderId,
+        receiverId,
+        status: { in: ['pending', 'negotiating'] },
+      },
+    });
     if (existing) {
       return res.status(409).json({ message: 'You already have a pending request with this user' });
     }
 
     const id = randomUUID();
-    await dbRun(db,
-      `INSERT INTO collaboration_requests (id, sender_id, receiver_id, message, campaign_title, budget_offered, tenure_days, tenure_value, tenure_unit)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, senderId, receiverId, message || '', campaignTitle || '', budgetOffered || 0,
-        normalizedTenureDays, normalizedTenureValue, normalizedTenureUnit]
-    );
+    await prisma.collaborationRequest.create({
+      data: {
+        id,
+        senderId,
+        receiverId,
+        message: message || '',
+        campaignTitle: campaignTitle || '',
+        budgetOffered: budgetOffered || 0,
+        tenureDays: normalizedTenureDays,
+        tenureValue: normalizedTenureValue,
+        tenureUnit: normalizedTenureUnit,
+      },
+    });
 
-    const sender = await dbGet(db, 'SELECT display_name FROM users WHERE id = ?', [senderId]);
-    await dbRun(db,
-      `INSERT INTO notifications (id, user_id, type, title, body, related_id)
-       VALUES (?, ?, 'collab_request', ?, ?, ?)`,
-      [randomUUID(), receiverId, 'New collaboration request',
-        `${sender?.display_name || 'Someone'} wants to collaborate with you — Budget: NPR ${(budgetOffered || 0).toLocaleString()} • Tenure: ${normalizedType === 'lifertime' ? 'Lifertime' : `${normalizedTenureValue} ${normalizedTenureUnit}`}`,
-        id]
-    );
+    const sender = await prisma.user.findUnique({
+      where: { id: senderId },
+      select: { displayName: true },
+    });
+    await prisma.notification.create({
+      data: {
+        id: randomUUID(),
+        userId: receiverId,
+        type: 'collab_request',
+        title: 'New collaboration request',
+        body: `${sender?.displayName || 'Someone'} wants to collaborate with you — Budget: NPR ${(budgetOffered || 0).toLocaleString()} • Tenure: ${normalizedType === 'lifertime' ? 'Lifertime' : `${normalizedTenureValue} ${normalizedTenureUnit}`}`,
+        relatedId: id,
+      },
+    });
 
     res.status(201).json({ id, message: 'Request sent' });
   } catch (error) { next(error); }
@@ -68,16 +83,16 @@ export async function sendRequest(req, res, next) {
 /* ── Respond to request (accept / reject / negotiate) ── */
 export async function respondToRequest(req, res, next) {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const userId = req.userId;
     const { requestId } = req.params;
     const { status, message } = req.body;
 
-    const request = await dbGet(db, 'SELECT * FROM collaboration_requests WHERE id = ?', [requestId]);
+    const request = await prisma.collaborationRequest.findUnique({ where: { id: requestId } });
     if (!request) return res.status(404).json({ message: 'Request not found' });
 
-    const isSender = request.sender_id === userId;
-    const isReceiver = request.receiver_id === userId;
+    const isSender = request.senderId === userId;
+    const isReceiver = request.receiverId === userId;
     if (!isSender && !isReceiver) {
       return res.status(403).json({ message: 'Not authorized' });
     }
@@ -90,29 +105,33 @@ export async function respondToRequest(req, res, next) {
       return res.status(400).json({ message: 'Request already resolved' });
     }
 
-    await dbRun(db,
-      `UPDATE collaboration_requests
-       SET status = ?,
-           message = COALESCE(?, message),
-           accepted_at = CASE
-             WHEN ? = 'accepted' AND accepted_at IS NULL THEN CURRENT_TIMESTAMP
-             WHEN ? <> 'accepted' THEN NULL
-             ELSE accepted_at
-           END,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-      [status, message, status, status, requestId]
-    );
+    await prisma.collaborationRequest.update({
+      where: { id: requestId },
+      data: {
+        status,
+        message: message ?? request.message,
+        acceptedAt: status === 'accepted' && !request.acceptedAt
+          ? new Date()
+          : status !== 'accepted' ? null : request.acceptedAt,
+      },
+    });
 
-    const otherUserId = isSender ? request.receiver_id : request.sender_id;
-    const responder = await dbGet(db, 'SELECT display_name FROM users WHERE id = ?', [userId]);
+    const otherUserId = isSender ? request.receiverId : request.senderId;
+    const responder = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { displayName: true },
+    });
     const statusText = status === 'accepted' ? 'accepted' : status === 'rejected' ? 'declined' : 'wants to negotiate';
-    await dbRun(db,
-      `INSERT INTO notifications (id, user_id, type, title, body, related_id)
-       VALUES (?, ?, 'collab_response', ?, ?, ?)`,
-      [randomUUID(), otherUserId, `Collaboration ${status}`,
-        `${responder?.display_name || 'Someone'} ${statusText} your collaboration request`, requestId]
-    );
+    await prisma.notification.create({
+      data: {
+        id: randomUUID(),
+        userId: otherUserId,
+        type: 'collab_response',
+        title: `Collaboration ${status}`,
+        body: `${responder?.displayName || 'Someone'} ${statusText} your collaboration request`,
+        relatedId: requestId,
+      },
+    });
 
     res.json({ message: `Request ${status}` });
   } catch (error) { next(error); }
@@ -121,16 +140,16 @@ export async function respondToRequest(req, res, next) {
 /* ── Send counter-offer (negotiation message) ── */
 export async function sendCounterOffer(req, res, next) {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const userId = req.userId;
     const { requestId } = req.params;
     const { message, proposedBudget, proposedTenureValue, proposedTenureUnit } = req.body;
 
-    const request = await dbGet(db, 'SELECT * FROM collaboration_requests WHERE id = ?', [requestId]);
+    const request = await prisma.collaborationRequest.findUnique({ where: { id: requestId } });
     if (!request) return res.status(404).json({ message: 'Request not found' });
 
-    const isSender = request.sender_id === userId;
-    const isReceiver = request.receiver_id === userId;
+    const isSender = request.senderId === userId;
+    const isReceiver = request.receiverId === userId;
     if (!isSender && !isReceiver) {
       return res.status(403).json({ message: 'Not authorized' });
     }
@@ -147,29 +166,47 @@ export async function sendCounterOffer(req, res, next) {
       newTenureDays = newTenureValue * multiplier;
     }
 
-    await dbRun(db,
-      `UPDATE collaboration_requests SET status = 'negotiating', budget_offered = ?,
-       tenure_value = COALESCE(?, tenure_value), tenure_unit = COALESCE(?, tenure_unit),
-       tenure_days = COALESCE(?, tenure_days), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [proposedBudget || request.budget_offered, newTenureValue, newTenureUnit, newTenureDays, requestId]
-    );
+    await prisma.collaborationRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'negotiating',
+        budgetOffered: proposedBudget || request.budgetOffered,
+        tenureValue: newTenureValue ?? request.tenureValue,
+        tenureUnit: newTenureUnit ?? request.tenureUnit,
+        tenureDays: newTenureDays ?? request.tenureDays,
+      },
+    });
 
     const msgId = randomUUID();
-    await dbRun(db,
-      `INSERT INTO negotiation_messages (id, request_id, sender_id, message, proposed_budget, proposed_tenure_value, proposed_tenure_unit, action)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'counter')`,
-      [msgId, requestId, userId, message || '', proposedBudget || 0, newTenureValue, newTenureUnit]
-    );
+    await prisma.negotiationMessage.create({
+      data: {
+        id: msgId,
+        requestId,
+        senderId: userId,
+        message: message || '',
+        proposedBudget: proposedBudget || 0,
+        proposedTenureValue: newTenureValue,
+        proposedTenureUnit: newTenureUnit,
+        action: 'counter',
+      },
+    });
 
-    const otherUserId = isSender ? request.receiver_id : request.sender_id;
-    const counterParty = await dbGet(db, 'SELECT display_name FROM users WHERE id = ?', [userId]);
+    const otherUserId = isSender ? request.receiverId : request.senderId;
+    const counterParty = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { displayName: true },
+    });
     const tenureText = newTenureValue && newTenureUnit ? ` • Tenure: ${newTenureValue} ${newTenureUnit}` : '';
-    await dbRun(db,
-      `INSERT INTO notifications (id, user_id, type, title, body, related_id)
-       VALUES (?, ?, 'negotiation', ?, ?, ?)`,
-      [randomUUID(), otherUserId, 'Counter-offer received',
-        `${counterParty?.display_name || 'Someone'} proposed NPR ${(proposedBudget || 0).toLocaleString()}${tenureText} — "${(message || '').slice(0, 80)}"`, requestId]
-    );
+    await prisma.notification.create({
+      data: {
+        id: randomUUID(),
+        userId: otherUserId,
+        type: 'negotiation',
+        title: 'Counter-offer received',
+        body: `${counterParty?.displayName || 'Someone'} proposed NPR ${(proposedBudget || 0).toLocaleString()}${tenureText} — "${(message || '').slice(0, 80)}"`,
+        relatedId: requestId,
+      },
+    });
 
     res.json({ message: 'Counter-offer sent', id: msgId });
   } catch (error) { next(error); }
@@ -178,41 +215,41 @@ export async function sendCounterOffer(req, res, next) {
 /* ── Get negotiation history for a request ── */
 export async function getNegotiationHistory(req, res, next) {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const userId = req.userId;
     const { requestId } = req.params;
 
-    const request = await dbGet(db, 'SELECT * FROM collaboration_requests WHERE id = ?', [requestId]);
+    const request = await prisma.collaborationRequest.findUnique({ where: { id: requestId } });
     if (!request) return res.status(404).json({ message: 'Request not found' });
-    if (request.sender_id !== userId && request.receiver_id !== userId) {
+    if (request.senderId !== userId && request.receiverId !== userId) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    const messages = await dbAll(db, `
-      SELECT nm.*, u.display_name as sender_name, u.avatar_color as sender_color
-      FROM negotiation_messages nm
-      JOIN users u ON nm.sender_id = u.id
-      WHERE nm.request_id = ?
-      ORDER BY nm.created_at ASC
-    `, [requestId]);
+    const messages = await prisma.negotiationMessage.findMany({
+      where: { requestId },
+      include: {
+        sender: { select: { displayName: true, avatarColor: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
 
     res.json({
       requestId,
-      originalBudget: request.budget_offered,
-      originalTenureValue: request.tenure_value,
-      originalTenureUnit: request.tenure_unit,
+      originalBudget: request.budgetOffered,
+      originalTenureValue: request.tenureValue,
+      originalTenureUnit: request.tenureUnit,
       currentStatus: request.status,
       messages: messages.map((m) => ({
         id: m.id,
-        senderId: m.sender_id,
-        senderName: m.sender_name,
-        senderColor: m.sender_color,
+        senderId: m.senderId,
+        senderName: m.sender?.displayName,
+        senderColor: m.sender?.avatarColor,
         message: m.message,
-        proposedBudget: m.proposed_budget,
-        proposedTenureValue: m.proposed_tenure_value,
-        proposedTenureUnit: m.proposed_tenure_unit,
+        proposedBudget: m.proposedBudget,
+        proposedTenureValue: m.proposedTenureValue,
+        proposedTenureUnit: m.proposedTenureUnit,
         action: m.action,
-        createdAt: m.created_at,
+        createdAt: m.createdAt,
       })),
     });
   } catch (error) { next(error); }
@@ -221,28 +258,28 @@ export async function getNegotiationHistory(req, res, next) {
 /* ── Get my requests (sent + received) ── */
 export async function getMyRequests(req, res, next) {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const userId = req.userId;
 
-    const sent = await dbAll(db, `
-      SELECT cr.*, u.display_name as receiver_name, u.avatar_color as receiver_color, u.role as receiver_role
-      FROM collaboration_requests cr
-      JOIN users u ON cr.receiver_id = u.id
-      WHERE cr.sender_id = ?
-      ORDER BY cr.created_at DESC
-    `, [userId]);
+    const sent = await prisma.collaborationRequest.findMany({
+      where: { senderId: userId },
+      include: {
+        receiver: { select: { displayName: true, avatarColor: true, role: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    const received = await dbAll(db, `
-      SELECT cr.*, u.display_name as sender_name, u.avatar_color as sender_color, u.role as sender_role
-      FROM collaboration_requests cr
-      JOIN users u ON cr.sender_id = u.id
-      WHERE cr.receiver_id = ?
-      ORDER BY cr.created_at DESC
-    `, [userId]);
+    const received = await prisma.collaborationRequest.findMany({
+      where: { receiverId: userId },
+      include: {
+        sender: { select: { displayName: true, avatarColor: true, role: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
     res.json({
-      sent: sent.map(formatRequest),
-      received: received.map(formatRequest),
+      sent: sent.map((r) => formatRequest(r, 'sent')),
+      received: received.map((r) => formatRequest(r, 'received')),
     });
   } catch (error) { next(error); }
 }
@@ -250,11 +287,12 @@ export async function getMyRequests(req, res, next) {
 /* ── Get my notifications ── */
 export async function getNotifications(req, res, next) {
   try {
-    const db = getDb();
-    const notifications = await dbAll(db,
-      'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 30',
-      [req.userId]
-    );
+    const prisma = getPrisma();
+    const notifications = await prisma.notification.findMany({
+      where: { userId: req.userId },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+    });
     res.json({ notifications });
   } catch (error) { next(error); }
 }
@@ -262,35 +300,35 @@ export async function getNotifications(req, res, next) {
 /* ── Mark notification read ── */
 export async function markNotificationRead(req, res, next) {
   try {
-    const db = getDb();
-    await dbRun(db,
-      'UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?',
-      [req.params.notifId, req.userId]
-    );
+    const prisma = getPrisma();
+    await prisma.notification.updateMany({
+      where: { id: req.params.notifId, userId: req.userId },
+      data: { isRead: true },
+    });
     res.json({ message: 'Marked as read' });
   } catch (error) { next(error); }
 }
 
-function formatRequest(r) {
+function formatRequest(r, direction) {
   return {
     id: r.id,
-    senderId: r.sender_id,
-    receiverId: r.receiver_id,
-    senderName: r.sender_name,
-    senderColor: r.sender_color,
-    senderRole: r.sender_role,
-    receiverName: r.receiver_name,
-    receiverColor: r.receiver_color,
-    receiverRole: r.receiver_role,
+    senderId: r.senderId,
+    receiverId: r.receiverId,
+    senderName: r.sender?.displayName,
+    senderColor: r.sender?.avatarColor,
+    senderRole: r.sender?.role,
+    receiverName: r.receiver?.displayName,
+    receiverColor: r.receiver?.avatarColor,
+    receiverRole: r.receiver?.role,
     message: r.message,
     status: r.status,
-    campaignTitle: r.campaign_title,
-    budgetOffered: r.budget_offered,
-    tenureDays: r.tenure_days,
-    tenureValue: r.tenure_value,
-    tenureUnit: r.tenure_unit,
-    acceptedAt: r.accepted_at,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
+    campaignTitle: r.campaignTitle,
+    budgetOffered: r.budgetOffered,
+    tenureDays: r.tenureDays,
+    tenureValue: r.tenureValue,
+    tenureUnit: r.tenureUnit,
+    acceptedAt: r.acceptedAt,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
   };
 }

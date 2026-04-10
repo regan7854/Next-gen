@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAdminAuth } from '../../context/AdminAuthContext.jsx';
-import AdminChart from '../../components/admin/AdminChart.jsx';
+import { BarChart, PieChart } from '../../components/admin/AdminChart.jsx';
 import { Users, Handshake, Clock, UserPlus, Bell } from 'lucide-react';
+
+const POLL_MS = 5_000;
 
 export default function AdminDashboard() {
   const { apiFetch } = useAdminAuth();
@@ -10,8 +12,10 @@ export default function AdminDashboard() {
   const [activity, setActivity] = useState(null);
   const [growth, setGrowth] = useState(null);
   const [loading, setLoading] = useState(true);
+  const timerRef = useRef(null);
 
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(async (initial = false) => {
+    if (initial) setLoading(true);
     try {
       const [statsRes, activityRes, growthRes] = await Promise.all([
         apiFetch('/stats'),
@@ -29,11 +33,15 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error('Dashboard load error:', err);
     } finally {
-      setLoading(false);
+      if (initial) setLoading(false);
     }
   }, [apiFetch]);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => {
+    fetchAll(true);
+    timerRef.current = setInterval(() => fetchAll(false), POLL_MS);
+    return () => clearInterval(timerRef.current);
+  }, [fetchAll]);
 
   if (loading) {
     return (
@@ -69,13 +77,20 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Growth Charts */}
+      {/* Charts */}
       <div className="admin-charts-grid">
         <div className="admin-card">
-          <AdminChart data={growth?.userGrowth} label="New Users (Last 30 Days)" color="#6c5ce7" height={240} />
+          <BarChart data={growth?.userGrowth} label="New Users (Last 30 Days)" color="#6c5ce7" />
         </div>
         <div className="admin-card">
-          <AdminChart data={growth?.collabGrowth} label="Collaborations (Last 30 Days)" color="#00b894" height={240} />
+          <PieChart
+            label="Collaboration Status"
+            slices={[
+              { label: 'Active',    value: stats?.activeCollabs   || 0, color: '#00b894' },
+              { label: 'Pending',   value: stats?.pendingRequests || 0, color: '#fdcb6e' },
+              { label: 'Completed', value: Math.max((stats?.totalCollaborations || 0) - (stats?.activeCollabs || 0) - (stats?.pendingRequests || 0), 0), color: '#6c5ce7' },
+            ]}
+          />
         </div>
       </div>
 

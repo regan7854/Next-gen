@@ -69,6 +69,7 @@ export function AdminAuthProvider({ children }) {
   async function apiFetch(endpoint, options = {}) {
     const token = getToken();
     const res = await fetch(`${API}/admin${endpoint}`, {
+      cache: 'no-store',
       ...options,
       headers: {
         'Content-Type': 'application/json',

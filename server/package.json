@@ -4,6 +4,7 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
+    "predev": "node -e \"const{execSync}=require('child_process');try{const p=execSync('netstat -ano | findstr :5000 | findstr LISTENING',{encoding:'utf8'});const pid=p.trim().split(/\\s+/).pop();if(pid&&pid!=='0')execSync('taskkill /F /PID '+pid)}catch{}\"",
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "lint": "echo \"No lint command configured\"",
@@ -19,8 +20,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-validator": "^7.0.1",
-    "jsonwebtoken": "^9.0.2",
-    "sqlite3": "^5.1.6"
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "prisma": "^6.5.0"

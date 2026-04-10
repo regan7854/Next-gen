@@ -492,6 +492,73 @@
 }
 .ac-empty p { margin: 0; }
 
+/* ── Bar Chart ── */
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 180px;
+  padding-bottom: 28px;
+  position: relative;
+}
+.bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  position: relative;
+  cursor: pointer;
+}
+.bar-count {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #7A7770;
+  margin-bottom: 2px;
+}
+.bar-fill {
+  width: 100%;
+  min-height: 3px;
+  transition: height 0.3s ease, background 0.15s;
+}
+.bar-label {
+  position: absolute;
+  bottom: 0;
+  font-size: 0.6rem;
+  color: #C0BDB7;
+  white-space: nowrap;
+  transform: rotate(-35deg);
+  transform-origin: top left;
+  left: 50%;
+}
+
+/* ── Pie Chart ── */
+.pie-body {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0;
+}
+.pie-svg-wrap { width: 160px; height: 160px; flex-shrink: 0; }
+.pie-svg { width: 100%; height: 100%; }
+.pie-legend { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-width: 120px; }
+.pie-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.pie-legend-row:hover, .pie-legend-active { background: #F0EDE7; }
+.pie-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.pie-legend-label { font-size: 0.82rem; color: #1A1916; flex: 1; }
+.pie-legend-val { font-size: 0.82rem; font-weight: 700; color: #1A1916; }
+.pie-legend-pct { font-size: 0.72rem; color: #9B9891; min-width: 32px; text-align: right; }
+
 /* ── Role / Donut chart ── */
 .ac-role-section { }
 .ac-role-body { display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; justify-content: center; padding: 0.75rem 0; }
@@ -677,6 +744,20 @@
 .admin-page-info { font-size: 0.8rem; color: #9B9891; }
 
 /* ── Flash ── */
+.admin-role-tag {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  margin-left: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+.admin-role-tag.influencer { background: #ede9fe; color: #6c5ce7; }
+.admin-role-tag.brand { background: #d1fae5; color: #00b894; }
+
 .admin-flash { padding: 0.65rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 500; background: #d4edda; color: #155724; text-align: center; }
 .admin-flash-error { background: #FEF2EE; color: #C8552A; }
 .admin-flash-success { background: #d4edda; color: #155724; }

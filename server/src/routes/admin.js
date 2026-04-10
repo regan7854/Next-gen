@@ -2,7 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { getDb, dbRun, dbGet, dbAll } from '../lib/database.js';
+import { getPrisma } from '../lib/prisma.js';
 import adminAuth from '../middleware/adminAuth.js';
 
 const router = Router();
@@ -16,13 +16,13 @@ router.post('/login', async (req, res, next) => {
       return res.status(400).json({ message: 'Username and password required' });
     }
 
-    const db = getDb();
-    const admin = await dbGet(db, 'SELECT * FROM admins WHERE username = ?', [username]);
+    const prisma = getPrisma();
+    const admin = await prisma.admin.findUnique({ where: { username } });
     if (!admin) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const valid = await bcrypt.compare(password, admin.password_hash);
+    const valid = await bcrypt.compare(password, admin.passwordHash);
     if (!valid) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -44,32 +44,37 @@ router.get('/me', adminAuth, (req, res) => {
 
 router.get('/stats', adminAuth, async (_req, res, next) => {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
 
-    const totalUsers = await dbGet(db, 'SELECT COUNT(*) AS count FROM users');
-    const influencers = await dbGet(db, "SELECT COUNT(*) AS count FROM users WHERE role = 'influencer'");
-    const brands = await dbGet(db, "SELECT COUNT(*) AS count FROM users WHERE role = 'brand'");
-    const totalCollaborations = await dbGet(db, 'SELECT COUNT(*) AS count FROM collaboration_requests');
-    const totalConnections = await dbGet(db, "SELECT COUNT(*) AS count FROM collaboration_requests WHERE status = 'accepted'");
-    const pendingRequests = await dbGet(db, "SELECT COUNT(*) AS count FROM collaboration_requests WHERE status = 'pending'");
-    const activeCollabs = await dbGet(db, "SELECT COUNT(*) AS count FROM collaboration_requests WHERE status = 'accepted'");
-    const totalNotifications = await dbGet(db, 'SELECT COUNT(*) AS count FROM notifications');
-    const totalCategories = await dbGet(db,
-      "SELECT COUNT(DISTINCT category) AS count FROM influencer_profiles WHERE category IS NOT NULL AND category != ''");
-    const newUsersWeek = await dbGet(db,
-      "SELECT COUNT(*) AS count FROM users WHERE created_at >= datetime('now', '-7 days')");
+    const [totalUsers, influencers, brands, totalCollaborations, totalConnections, pendingRequests, totalNotifications, totalCategories, newUsersWeek] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { role: 'influencer' } }),
+      prisma.user.count({ where: { role: 'brand' } }),
+      prisma.collaborationRequest.count(),
+      prisma.collaborationRequest.count({ where: { status: 'accepted' } }),
+      prisma.collaborationRequest.count({ where: { status: 'pending' } }),
+      prisma.notification.count(),
+      prisma.influencerProfile.findMany({
+        where: { category: { not: null } },
+        select: { category: true },
+        distinct: ['category'],
+      }),
+      prisma.user.count({
+        where: { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+      }),
+    ]);
 
     res.json({
-      totalUsers: totalUsers.count,
-      influencers: influencers.count,
-      brands: brands.count,
-      totalCollaborations: totalCollaborations.count,
-      totalConnections: totalConnections.count,
-      pendingRequests: pendingRequests.count,
-      activeCollabs: activeCollabs.count,
-      totalNotifications: totalNotifications.count,
-      totalCategories: totalCategories.count,
-      newUsersWeek: newUsersWeek.count,
+      totalUsers,
+      influencers,
+      brands,
+      totalCollaborations,
+      totalConnections,
+      pendingRequests,
+      activeCollabs: totalConnections,
+      totalNotifications,
+      totalCategories: totalCategories.filter((c) => c.category && c.category !== '').length,
+      newUsersWeek,
     });
   } catch (err) { next(err); }
 });
@@ -78,24 +83,33 @@ router.get('/stats', adminAuth, async (_req, res, next) => {
 
 router.get('/activity', adminAuth, async (_req, res, next) => {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
 
-    const recentUsers = await dbAll(db,
-      `SELECT id, display_name, email, role, created_at
-       FROM users ORDER BY created_at DESC LIMIT 5`
-    );
+    const recentUsers = await prisma.user.findMany({
+      select: { id: true, displayName: true, email: true, role: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
 
-    const recentCollabs = await dbAll(db,
-      `SELECT cr.id, cr.status, cr.created_at,
-              s.display_name AS sender_name,
-              r.display_name AS receiver_name
-       FROM collaboration_requests cr
-       LEFT JOIN users s ON s.id = cr.sender_id
-       LEFT JOIN users r ON r.id = cr.receiver_id
-       ORDER BY cr.created_at DESC LIMIT 5`
-    );
+    const recentCollabs = await prisma.collaborationRequest.findMany({
+      select: {
+        id: true, status: true, createdAt: true,
+        sender: { select: { displayName: true } },
+        receiver: { select: { displayName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
 
-    res.json({ recentUsers, recentCollabs });
+    res.json({
+      recentUsers: recentUsers.map((u) => ({
+        id: u.id, display_name: u.displayName, email: u.email, role: u.role, created_at: u.createdAt,
+      })),
+      recentCollabs: recentCollabs.map((c) => ({
+        id: c.id, status: c.status, created_at: c.createdAt,
+        sender_name: c.sender?.displayName, receiver_name: c.receiver?.displayName,
+      })),
+    });
   } catch (err) { next(err); }
 });
 
@@ -103,45 +117,61 @@ router.get('/activity', adminAuth, async (_req, res, next) => {
 
 router.get('/users', adminAuth, async (req, res, next) => {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const { page = 1, limit = 20, search = '' } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
-    let where = '';
-    let params = [];
-    if (search) {
-      where = "WHERE username LIKE ? OR display_name LIKE ? OR email LIKE ?";
-      const s = `%${search}%`;
-      params = [s, s, s];
-    }
+    const where = search
+      ? {
+          OR: [
+            { username: { contains: search, mode: 'insensitive' } },
+            { displayName: { contains: search, mode: 'insensitive' } },
+            { email: { contains: search, mode: 'insensitive' } },
+          ],
+        }
+      : {};
 
-    const total = await dbGet(db, `SELECT COUNT(*) AS count FROM users ${where}`, params);
-    const users = await dbAll(db,
-      `SELECT id, username, display_name, email, role, avatar_color, location, created_at
-       FROM users ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-      [...params, Number(limit), offset]
-    );
+    const [total, users] = await Promise.all([
+      prisma.user.count({ where }),
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true, username: true, displayName: true, email: true,
+          role: true, avatarColor: true, location: true, createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: Number(limit),
+        skip: offset,
+      }),
+    ]);
 
-    res.json({ users, total: total.count, page: Number(page), limit: Number(limit) });
+    res.json({
+      users: users.map((u) => ({
+        id: u.id, username: u.username, display_name: u.displayName,
+        email: u.email, role: u.role, avatar_color: u.avatarColor,
+        location: u.location, created_at: u.createdAt,
+      })),
+      total, page: Number(page), limit: Number(limit),
+    });
   } catch (err) { next(err); }
 });
 
 router.put('/users/:id', adminAuth, async (req, res, next) => {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const { display_name, email, role } = req.body;
-    await dbRun(db,
-      'UPDATE users SET display_name = ?, email = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [display_name, email, role, req.params.id]
-    );
+    await prisma.user.update({
+      where: { id: req.params.id },
+      data: { displayName: display_name, email, role },
+    });
     res.json({ message: 'User updated' });
   } catch (err) { next(err); }
 });
 
 router.delete('/users/:id', adminAuth, async (req, res, next) => {
   try {
-    const db = getDb();
-    await dbRun(db, 'DELETE FROM users WHERE id = ?', [req.params.id]);
+    const prisma = getPrisma();
+    await prisma.user.delete({ where: { id: req.params.id } });
     res.json({ message: 'User deleted' });
   } catch (err) { next(err); }
 });
@@ -150,49 +180,52 @@ router.delete('/users/:id', adminAuth, async (req, res, next) => {
 
 router.get('/collaborations', adminAuth, async (req, res, next) => {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const { page = 1, limit = 20, status = '' } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
-    let where = '';
-    let params = [];
-    if (status) {
-      where = 'WHERE cr.status = ?';
-      params = [status];
-    }
+    const where = status ? { status } : {};
 
-    const total = await dbGet(db,
-      `SELECT COUNT(*) AS count FROM collaboration_requests cr ${where}`, params);
+    const [totalCount, collabs] = await Promise.all([
+      prisma.collaborationRequest.count({ where }),
+      prisma.collaborationRequest.findMany({
+        where,
+        include: {
+          sender: { select: { displayName: true } },
+          receiver: { select: { displayName: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: Number(limit),
+        skip: offset,
+      }),
+    ]);
 
-    const collabs = await dbAll(db,
-      `SELECT cr.*, s.display_name AS sender_name, r.display_name AS receiver_name
-       FROM collaboration_requests cr
-       LEFT JOIN users s ON s.id = cr.sender_id
-       LEFT JOIN users r ON r.id = cr.receiver_id
-       ${where} ORDER BY cr.created_at DESC LIMIT ? OFFSET ?`,
-      [...params, Number(limit), offset]
-    );
-
-    res.json({ collabs, total: total.count, page: Number(page), limit: Number(limit) });
+    const totalPages = Math.ceil(totalCount / Number(limit));
+    res.json({
+      collaborations: collabs.map((c) => ({
+        ...c, sender_name: c.sender?.displayName, receiver_name: c.receiver?.displayName,
+      })),
+      total: totalCount, totalPages, page: Number(page), limit: Number(limit),
+    });
   } catch (err) { next(err); }
 });
 
-router.put('/collaborations/:id', adminAuth, async (req, res, next) => {
+router.put('/collaborations/:id/status', adminAuth, async (req, res, next) => {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const { status } = req.body;
-    await dbRun(db,
-      'UPDATE collaboration_requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [status, req.params.id]
-    );
+    await prisma.collaborationRequest.update({
+      where: { id: req.params.id },
+      data: { status },
+    });
     res.json({ message: 'Collaboration updated' });
   } catch (err) { next(err); }
 });
 
 router.delete('/collaborations/:id', adminAuth, async (req, res, next) => {
   try {
-    const db = getDb();
-    await dbRun(db, 'DELETE FROM collaboration_requests WHERE id = ?', [req.params.id]);
+    const prisma = getPrisma();
+    await prisma.collaborationRequest.delete({ where: { id: req.params.id } });
     res.json({ message: 'Collaboration deleted' });
   } catch (err) { next(err); }
 });
@@ -201,32 +234,39 @@ router.delete('/collaborations/:id', adminAuth, async (req, res, next) => {
 
 router.get('/connections', adminAuth, async (req, res, next) => {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const { page = 1, limit = 20 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
-    const total = await dbGet(db,
-      "SELECT COUNT(*) AS count FROM collaboration_requests WHERE status = 'accepted'");
+    const where = { status: 'accepted' };
 
-    const connections = await dbAll(db,
-      `SELECT cr.*, s.display_name AS sender_name, r.display_name AS receiver_name
-       FROM collaboration_requests cr
-       LEFT JOIN users s ON s.id = cr.sender_id
-       LEFT JOIN users r ON r.id = cr.receiver_id
-       WHERE cr.status = 'accepted'
-       ORDER BY cr.accepted_at DESC, cr.updated_at DESC
-       LIMIT ? OFFSET ?`,
-      [Number(limit), offset]
-    );
+    const [total, connections] = await Promise.all([
+      prisma.collaborationRequest.count({ where }),
+      prisma.collaborationRequest.findMany({
+        where,
+        include: {
+          sender: { select: { displayName: true } },
+          receiver: { select: { displayName: true } },
+        },
+        orderBy: [{ acceptedAt: 'desc' }, { updatedAt: 'desc' }],
+        take: Number(limit),
+        skip: offset,
+      }),
+    ]);
 
-    res.json({ connections, total: total.count, page: Number(page), limit: Number(limit) });
+    res.json({
+      connections: connections.map((c) => ({
+        ...c, sender_name: c.sender?.displayName, receiver_name: c.receiver?.displayName,
+      })),
+      total: total, page: Number(page), limit: Number(limit),
+    });
   } catch (err) { next(err); }
 });
 
 router.delete('/connections/:id', adminAuth, async (req, res, next) => {
   try {
-    const db = getDb();
-    await dbRun(db, 'DELETE FROM collaboration_requests WHERE id = ?', [req.params.id]);
+    const prisma = getPrisma();
+    await prisma.collaborationRequest.delete({ where: { id: req.params.id } });
     res.json({ message: 'Connection deleted' });
   } catch (err) { next(err); }
 });
@@ -235,13 +275,13 @@ router.delete('/connections/:id', adminAuth, async (req, res, next) => {
 
 router.get('/categories', adminAuth, async (_req, res, next) => {
   try {
-    const db = getDb();
-    const rows = await dbAll(db,
-      `SELECT ip.category, COUNT(*) AS user_count
-       FROM influencer_profiles ip
-       WHERE ip.category IS NOT NULL AND ip.category != ''
-       GROUP BY ip.category ORDER BY user_count DESC`
-    );
+    const prisma = getPrisma();
+    const rows = await prisma.$queryRaw`
+      SELECT category, COUNT(*)::int AS user_count
+      FROM influencer_profiles
+      WHERE category IS NOT NULL AND category != ''
+      GROUP BY category ORDER BY user_count DESC
+    `;
     res.json({ categories: rows });
   } catch (err) { next(err); }
 });
@@ -250,19 +290,26 @@ router.get('/categories', adminAuth, async (_req, res, next) => {
 
 router.get('/notifications', adminAuth, async (req, res, next) => {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const { page = 1, limit = 20 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
-    const total = await dbGet(db, 'SELECT COUNT(*) AS count FROM notifications');
-    const notifications = await dbAll(db,
-      `SELECT n.*, u.display_name AS user_name
-       FROM notifications n LEFT JOIN users u ON u.id = n.user_id
-       ORDER BY n.created_at DESC LIMIT ? OFFSET ?`,
-      [Number(limit), offset]
-    );
+    const [total, notifications] = await Promise.all([
+      prisma.notification.count(),
+      prisma.notification.findMany({
+        include: { user: { select: { displayName: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: Number(limit),
+        skip: offset,
+      }),
+    ]);
 
-    res.json({ notifications, total: total.count, page: Number(page), limit: Number(limit) });
+    res.json({
+      notifications: notifications.map((n) => ({
+        ...n, user_name: n.user?.displayName,
+      })),
+      total, page: Number(page), limit: Number(limit),
+    });
   } catch (err) { next(err); }
 });
 
@@ -271,16 +318,19 @@ router.post('/notifications/broadcast', adminAuth, async (req, res, next) => {
     const { title, body } = req.body;
     if (!title) return res.status(400).json({ message: 'Title is required' });
 
-    const db = getDb();
-    const users = await dbAll(db, 'SELECT id FROM users');
+    const prisma = getPrisma();
+    const users = await prisma.user.findMany({ select: { id: true } });
 
-    for (const user of users) {
-      const id = crypto.randomUUID();
-      await dbRun(db,
-        'INSERT INTO notifications (id, user_id, type, title, body, is_read) VALUES (?, ?, ?, ?, ?, 0)',
-        [id, user.id, 'admin_broadcast', title, body || '']
-      );
-    }
+    const data = users.map((user) => ({
+      id: crypto.randomUUID(),
+      userId: user.id,
+      type: 'admin_broadcast',
+      title,
+      body: body || '',
+      isRead: false,
+    }));
+
+    await prisma.notification.createMany({ data });
 
     res.json({ message: `Broadcast sent to ${users.length} users` });
   } catch (err) { next(err); }
@@ -288,8 +338,8 @@ router.post('/notifications/broadcast', adminAuth, async (req, res, next) => {
 
 router.delete('/notifications/:id', adminAuth, async (req, res, next) => {
   try {
-    const db = getDb();
-    await dbRun(db, 'DELETE FROM notifications WHERE id = ?', [req.params.id]);
+    const prisma = getPrisma();
+    await prisma.notification.delete({ where: { id: req.params.id } });
     res.json({ message: 'Notification deleted' });
   } catch (err) { next(err); }
 });
@@ -297,7 +347,7 @@ router.delete('/notifications/:id', adminAuth, async (req, res, next) => {
 /* ───── Reports ───── */
 
 function fillDates(rows, days = 30) {
-  const map = new Map(rows.map(r => [r.date, r.count]));
+  const map = new Map(rows.map(r => [r.date, Number(r.count)]));
   const result = [];
   const now = new Date();
   for (let i = days - 1; i >= 0; i--) {
@@ -311,25 +361,26 @@ function fillDates(rows, days = 30) {
 
 router.get('/reports/growth', adminAuth, async (_req, res, next) => {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    const userGrowthRaw = await dbAll(db,
-      `SELECT strftime('%Y-%m-%d', created_at) AS date, COUNT(*) AS count
-       FROM users WHERE created_at >= datetime('now', '-30 days')
-       GROUP BY date ORDER BY date`
-    );
-
-    const collabGrowthRaw = await dbAll(db,
-      `SELECT strftime('%Y-%m-%d', created_at) AS date, COUNT(*) AS count
-       FROM collaboration_requests WHERE created_at >= datetime('now', '-30 days')
-       GROUP BY date ORDER BY date`
-    );
-
-    const notifGrowthRaw = await dbAll(db,
-      `SELECT strftime('%Y-%m-%d', created_at) AS date, COUNT(*) AS count
-       FROM notifications WHERE created_at >= datetime('now', '-30 days')
-       GROUP BY date ORDER BY date`
-    );
+    const [userGrowthRaw, collabGrowthRaw, notifGrowthRaw] = await Promise.all([
+      prisma.$queryRaw`
+        SELECT TO_CHAR(created_at, 'YYYY-MM-DD') AS date, COUNT(*)::int AS count
+        FROM users WHERE created_at >= ${thirtyDaysAgo}
+        GROUP BY date ORDER BY date
+      `,
+      prisma.$queryRaw`
+        SELECT TO_CHAR(created_at, 'YYYY-MM-DD') AS date, COUNT(*)::int AS count
+        FROM collaboration_requests WHERE created_at >= ${thirtyDaysAgo}
+        GROUP BY date ORDER BY date
+      `,
+      prisma.$queryRaw`
+        SELECT TO_CHAR(created_at, 'YYYY-MM-DD') AS date, COUNT(*)::int AS count
+        FROM notifications WHERE created_at >= ${thirtyDaysAgo}
+        GROUP BY date ORDER BY date
+      `,
+    ]);
 
     res.json({
       userGrowth: fillDates(userGrowthRaw),
@@ -341,25 +392,25 @@ router.get('/reports/growth', adminAuth, async (_req, res, next) => {
 
 router.get('/reports/top-niches', adminAuth, async (_req, res, next) => {
   try {
-    const db = getDb();
-    const rows = await dbAll(db,
-      `SELECT niche, COUNT(*) AS count FROM influencer_profiles
-       WHERE niche IS NOT NULL AND niche != ''
-       GROUP BY niche ORDER BY count DESC LIMIT 10`
-    );
+    const prisma = getPrisma();
+    const rows = await prisma.$queryRaw`
+      SELECT niche, COUNT(*)::int AS count FROM influencer_profiles
+      WHERE niche IS NOT NULL AND niche != ''
+      GROUP BY niche ORDER BY count DESC LIMIT 10
+    `;
     res.json({ niches: rows });
   } catch (err) { next(err); }
 });
 
 router.get('/reports/active-users', adminAuth, async (_req, res, next) => {
   try {
-    const db = getDb();
-    const rows = await dbAll(db,
-      `SELECT u.id, u.display_name, u.role, COUNT(cr.id) AS collab_count
-       FROM users u LEFT JOIN collaboration_requests cr
-       ON u.id = cr.sender_id OR u.id = cr.receiver_id
-       GROUP BY u.id ORDER BY collab_count DESC LIMIT 20`
-    );
+    const prisma = getPrisma();
+    const rows = await prisma.$queryRaw`
+      SELECT u.id, u.display_name, u.role, COUNT(cr.id)::int AS collab_count
+      FROM users u LEFT JOIN collaboration_requests cr
+      ON u.id = cr.sender_id OR u.id = cr.receiver_id
+      GROUP BY u.id, u.display_name, u.role ORDER BY collab_count DESC LIMIT 20
+    `;
     res.json({ users: rows });
   } catch (err) { next(err); }
 });
@@ -376,15 +427,18 @@ router.put('/settings/password', adminAuth, async (req, res, next) => {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
 
-    const db = getDb();
-    const admin = await dbGet(db, 'SELECT * FROM admins WHERE id = ?', [req.adminId]);
-    const valid = await bcrypt.compare(currentPassword, admin.password_hash);
+    const prisma = getPrisma();
+    const admin = await prisma.admin.findUnique({ where: { id: req.adminId } });
+    const valid = await bcrypt.compare(currentPassword, admin.passwordHash);
     if (!valid) {
       return res.status(401).json({ message: 'Current password is incorrect' });
     }
 
     const hash = await bcrypt.hash(newPassword, 10);
-    await dbRun(db, 'UPDATE admins SET password_hash = ? WHERE id = ?', [hash, admin.id]);
+    await prisma.admin.update({
+      where: { id: admin.id },
+      data: { passwordHash: hash },
+    });
     res.json({ message: 'Password updated' });
   } catch (err) { next(err); }
 });

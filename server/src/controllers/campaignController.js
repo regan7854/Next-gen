@@ -1,19 +1,27 @@
 import { randomUUID } from 'crypto';
-import { getDb, dbRun, dbGet, dbAll } from '../lib/database.js';
+import { getPrisma } from '../lib/prisma.js';
 
 /* ── Add campaign / portfolio item ── */
 export async function addCampaign(req, res, next) {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const userId = req.userId;
     const { title, description, platform, resultsSummary, reach, engagement, imageUrl } = req.body;
 
     const id = randomUUID();
-    await dbRun(db,
-      `INSERT INTO campaigns (id, user_id, title, description, platform, results_summary, reach, engagement, image_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, userId, title, description || '', platform || '', resultsSummary || '', reach || 0, engagement || 0, imageUrl || '']
-    );
+    await prisma.campaign.create({
+      data: {
+        id,
+        userId,
+        title,
+        description: description || '',
+        platform: platform || '',
+        resultsSummary: resultsSummary || '',
+        reach: reach || 0,
+        engagement: engagement || 0,
+        imageUrl: imageUrl || '',
+      },
+    });
 
     res.status(201).json({ id, message: 'Campaign added' });
   } catch (error) { next(error); }
@@ -22,11 +30,11 @@ export async function addCampaign(req, res, next) {
 /* ── Get my campaigns ── */
 export async function getMyCampaigns(req, res, next) {
   try {
-    const db = getDb();
-    const campaigns = await dbAll(db,
-      'SELECT * FROM campaigns WHERE user_id = ? ORDER BY created_at DESC',
-      [req.userId]
-    );
+    const prisma = getPrisma();
+    const campaigns = await prisma.campaign.findMany({
+      where: { userId: req.userId },
+      orderBy: { createdAt: 'desc' },
+    });
     res.json({ campaigns });
   } catch (error) { next(error); }
 }
@@ -34,11 +42,10 @@ export async function getMyCampaigns(req, res, next) {
 /* ── Delete campaign ── */
 export async function deleteCampaign(req, res, next) {
   try {
-    const db = getDb();
-    await dbRun(db,
-      'DELETE FROM campaigns WHERE id = ? AND user_id = ?',
-      [req.params.campaignId, req.userId]
-    );
+    const prisma = getPrisma();
+    await prisma.campaign.deleteMany({
+      where: { id: req.params.campaignId, userId: req.userId },
+    });
     res.json({ message: 'Campaign deleted' });
   } catch (error) { next(error); }
 }
@@ -46,7 +53,7 @@ export async function deleteCampaign(req, res, next) {
 /* ── Leave a review ── */
 export async function leaveReview(req, res, next) {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const reviewerId = req.userId;
     const { revieweeId, collabRequestId, rating, comment } = req.body;
 
@@ -55,27 +62,38 @@ export async function leaveReview(req, res, next) {
     }
 
     if (collabRequestId) {
-      const existing = await dbGet(db,
-        'SELECT id FROM reviews WHERE reviewer_id = ? AND collab_request_id = ?',
-        [reviewerId, collabRequestId]
-      );
+      const existing = await prisma.review.findFirst({
+        where: { reviewerId, collabRequestId },
+      });
       if (existing) return res.status(409).json({ message: 'Already reviewed this collaboration' });
     }
 
     const id = randomUUID();
-    await dbRun(db,
-      `INSERT INTO reviews (id, reviewer_id, reviewee_id, collab_request_id, rating, comment)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, reviewerId, revieweeId, collabRequestId || null, rating, comment || '']
-    );
+    await prisma.review.create({
+      data: {
+        id,
+        reviewerId,
+        revieweeId,
+        collabRequestId: collabRequestId || null,
+        rating,
+        comment: comment || '',
+      },
+    });
 
-    const reviewer = await dbGet(db, 'SELECT display_name FROM users WHERE id = ?', [reviewerId]);
-    await dbRun(db,
-      `INSERT INTO notifications (id, user_id, type, title, body, related_id)
-       VALUES (?, ?, 'review', ?, ?, ?)`,
-      [randomUUID(), revieweeId, 'New review',
-        `${reviewer?.display_name || 'Someone'} left you a ${rating}-star review`, id]
-    );
+    const reviewer = await prisma.user.findUnique({
+      where: { id: reviewerId },
+      select: { displayName: true },
+    });
+    await prisma.notification.create({
+      data: {
+        id: randomUUID(),
+        userId: revieweeId,
+        type: 'review',
+        title: 'New review',
+        body: `${reviewer?.displayName || 'Someone'} left you a ${rating}-star review`,
+        relatedId: id,
+      },
+    });
 
     res.status(201).json({ id, message: 'Review submitted' });
   } catch (error) { next(error); }
@@ -84,25 +102,31 @@ export async function leaveReview(req, res, next) {
 /* ── Get reviews for a user ── */
 export async function getReviewsFor(req, res, next) {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const { userId } = req.params;
 
-    const reviews = await dbAll(db,
-      `SELECT r.*, u.display_name as reviewer_name, u.avatar_color as reviewer_color
-       FROM reviews r JOIN users u ON r.reviewer_id = u.id
-       WHERE r.reviewee_id = ? ORDER BY r.created_at DESC`,
-      [userId]
-    );
+    const reviews = await prisma.review.findMany({
+      where: { revieweeId: userId },
+      include: {
+        reviewer: { select: { displayName: true, avatarColor: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    const avgRow = await dbGet(db,
-      'SELECT AVG(rating) as avg_rating, COUNT(*) as count FROM reviews WHERE reviewee_id = ?',
-      [userId]
-    );
+    const avgRow = await prisma.review.aggregate({
+      where: { revieweeId: userId },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
 
     res.json({
-      reviews,
-      avgRating: avgRow?.avg_rating ? Math.round(avgRow.avg_rating * 10) / 10 : null,
-      reviewCount: avgRow?.count || 0,
+      reviews: reviews.map((r) => ({
+        ...r,
+        reviewer_name: r.reviewer?.displayName,
+        reviewer_color: r.reviewer?.avatarColor,
+      })),
+      avgRating: avgRow._avg.rating ? Math.round(avgRow._avg.rating * 10) / 10 : null,
+      reviewCount: avgRow._count.rating || 0,
     });
   } catch (error) { next(error); }
 }

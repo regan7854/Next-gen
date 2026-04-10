@@ -1,10 +1,10 @@
 import { randomUUID } from 'crypto';
-import { getDb, dbRun, dbGet, dbAll } from '../lib/database.js';
+import { getPrisma } from '../lib/prisma.js';
 
 /* ── Save / update influencer profile ── */
 export async function saveInfluencerProfile(req, res, next) {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const userId = req.userId;
     const {
       category, niche, location,
@@ -16,46 +16,35 @@ export async function saveInfluencerProfile(req, res, next) {
     } = req.body;
 
     // update user role + bio + location
-    await dbRun(db,
-      `UPDATE users SET role = 'influencer', biography = COALESCE(?, biography), location = COALESCE(?, location), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [biography, location, userId]
-    );
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        role: 'influencer',
+        biography: biography ?? undefined,
+        location: location ?? undefined,
+      },
+    });
 
-    const existing = await dbGet(db, 'SELECT user_id FROM influencer_profiles WHERE user_id = ?', [userId]);
-
-    if (existing) {
-      await dbRun(db,
-        `UPDATE influencer_profiles SET
-          category=?, niche=?,
-          instagram_handle=?, instagram_followers=?, instagram_engagement=?,
-          tiktok_handle=?, tiktok_followers=?, tiktok_avg_views=?,
-          youtube_handle=?, youtube_subscribers=?, youtube_avg_views=?,
-          audience_age_range=?, audience_location=?,
-          min_rate=?, max_rate=?, updated_at=CURRENT_TIMESTAMP
-        WHERE user_id=?`,
-        [category, niche,
-          instagramHandle, instagramFollowers || 0, instagramEngagement || 0,
-          tiktokHandle, tiktokFollowers || 0, tiktokAvgViews || 0,
-          youtubeHandle, youtubeSubscribers || 0, youtubeAvgViews || 0,
-          audienceAgeRange, audienceLocation,
-          minRate || 0, maxRate || 0, userId]
-      );
-    } else {
-      await dbRun(db,
-        `INSERT INTO influencer_profiles (user_id, category, niche,
-          instagram_handle, instagram_followers, instagram_engagement,
-          tiktok_handle, tiktok_followers, tiktok_avg_views,
-          youtube_handle, youtube_subscribers, youtube_avg_views,
-          audience_age_range, audience_location, min_rate, max_rate)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [userId, category, niche,
-          instagramHandle, instagramFollowers || 0, instagramEngagement || 0,
-          tiktokHandle, tiktokFollowers || 0, tiktokAvgViews || 0,
-          youtubeHandle, youtubeSubscribers || 0, youtubeAvgViews || 0,
-          audienceAgeRange, audienceLocation,
-          minRate || 0, maxRate || 0]
-      );
-    }
+    await prisma.influencerProfile.upsert({
+      where: { userId },
+      update: {
+        category, niche,
+        instagramHandle, instagramFollowers: instagramFollowers || 0, instagramEngagement: instagramEngagement || 0,
+        tiktokHandle, tiktokFollowers: tiktokFollowers || 0, tiktokAvgViews: tiktokAvgViews || 0,
+        youtubeHandle, youtubeSubscribers: youtubeSubscribers || 0, youtubeAvgViews: youtubeAvgViews || 0,
+        audienceAgeRange, audienceLocation,
+        minRate: minRate || 0, maxRate: maxRate || 0,
+      },
+      create: {
+        userId,
+        category, niche,
+        instagramHandle, instagramFollowers: instagramFollowers || 0, instagramEngagement: instagramEngagement || 0,
+        tiktokHandle, tiktokFollowers: tiktokFollowers || 0, tiktokAvgViews: tiktokAvgViews || 0,
+        youtubeHandle, youtubeSubscribers: youtubeSubscribers || 0, youtubeAvgViews: youtubeAvgViews || 0,
+        audienceAgeRange, audienceLocation,
+        minRate: minRate || 0, maxRate: maxRate || 0,
+      },
+    });
 
     res.json({ message: 'Profile saved' });
   } catch (error) { next(error); }
@@ -64,7 +53,7 @@ export async function saveInfluencerProfile(req, res, next) {
 /* ── Save / update brand profile ── */
 export async function saveBrandProfile(req, res, next) {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const userId = req.userId;
     const {
       companyName, industry, website, productType,
@@ -74,39 +63,32 @@ export async function saveBrandProfile(req, res, next) {
       biography, location,
     } = req.body;
 
-    await dbRun(db,
-      `UPDATE users SET role = 'brand', display_name = COALESCE(?, display_name), biography = COALESCE(?, biography), location = COALESCE(?, location), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [companyName, biography, location, userId]
-    );
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        role: 'brand',
+        displayName: companyName ?? undefined,
+        biography: biography ?? undefined,
+        location: location ?? undefined,
+      },
+    });
 
-    const existing = await dbGet(db, 'SELECT user_id FROM brand_profiles WHERE user_id = ?', [userId]);
-
-    if (existing) {
-      await dbRun(db,
-        `UPDATE brand_profiles SET
-          company_name=?, industry=?, website=?, product_type=?,
-          target_audience=?, campaign_goals=?,
-          min_budget=?, max_budget=?,
-          preferred_platforms=?, preferred_categories=?,
-          updated_at=CURRENT_TIMESTAMP
-        WHERE user_id=?`,
-        [companyName, industry, website, productType,
-          targetAudience, campaignGoals,
-          minBudget || 0, maxBudget || 0,
-          preferredPlatforms, preferredCategories, userId]
-      );
-    } else {
-      await dbRun(db,
-        `INSERT INTO brand_profiles (user_id, company_name, industry, website, product_type,
-          target_audience, campaign_goals, min_budget, max_budget,
-          preferred_platforms, preferred_categories)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-        [userId, companyName, industry, website, productType,
-          targetAudience, campaignGoals,
-          minBudget || 0, maxBudget || 0,
-          preferredPlatforms, preferredCategories]
-      );
-    }
+    await prisma.brandProfile.upsert({
+      where: { userId },
+      update: {
+        companyName, industry, website, productType,
+        targetAudience, campaignGoals,
+        minBudget: minBudget || 0, maxBudget: maxBudget || 0,
+        preferredPlatforms, preferredCategories,
+      },
+      create: {
+        userId,
+        companyName, industry, website, productType,
+        targetAudience, campaignGoals,
+        minBudget: minBudget || 0, maxBudget: maxBudget || 0,
+        preferredPlatforms, preferredCategories,
+      },
+    });
 
     res.json({ message: 'Profile saved' });
   } catch (error) { next(error); }
@@ -115,48 +97,65 @@ export async function saveBrandProfile(req, res, next) {
 /* ── Get any user's full profile (public view) ── */
 export async function getPublicProfile(req, res, next) {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const { userId } = req.params;
 
-    const user = await dbGet(db,
-      `SELECT id, display_name, email, role, biography, avatar_color, location, created_at FROM users WHERE id = ?`,
-      [userId]
-    );
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true, displayName: true, email: true, role: true,
+        biography: true, avatarColor: true, location: true, createdAt: true,
+      },
+    });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     let profile = null;
     if (user.role === 'influencer') {
-      profile = await dbGet(db, 'SELECT * FROM influencer_profiles WHERE user_id = ?', [userId]);
+      profile = await prisma.influencerProfile.findUnique({ where: { userId } });
     } else if (user.role === 'brand') {
-      profile = await dbGet(db, 'SELECT * FROM brand_profiles WHERE user_id = ?', [userId]);
+      profile = await prisma.brandProfile.findUnique({ where: { userId } });
     }
 
-    const campaigns = await dbAll(db, 'SELECT * FROM campaigns WHERE user_id = ? ORDER BY created_at DESC', [userId]);
+    const campaigns = await prisma.campaign.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    const ratingRow = await dbGet(db,
-      'SELECT AVG(rating) as avg_rating, COUNT(*) as review_count FROM reviews WHERE reviewee_id = ?', [userId]);
+    const ratingAgg = await prisma.review.aggregate({
+      where: { revieweeId: userId },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
 
-    const reviews = await dbAll(db,
-      `SELECT r.*, u.display_name as reviewer_name, u.avatar_color as reviewer_color
-       FROM reviews r JOIN users u ON r.reviewer_id = u.id
-       WHERE r.reviewee_id = ? ORDER BY r.created_at DESC LIMIT 10`, [userId]);
+    const reviews = await prisma.review.findMany({
+      where: { revieweeId: userId },
+      include: {
+        reviewer: { select: { displayName: true, avatarColor: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
 
     res.json({
       user: {
         id: user.id,
-        displayName: user.display_name,
+        displayName: user.displayName,
         email: user.email,
         role: user.role,
         biography: user.biography,
-        avatarColor: user.avatar_color,
+        avatarColor: user.avatarColor,
         location: user.location,
-        createdAt: user.created_at,
+        createdAt: user.createdAt,
       },
       profile: profile ? formatProfile(profile, user.role) : null,
       campaigns,
-      rating: ratingRow?.avg_rating ? Math.round(ratingRow.avg_rating * 10) / 10 : null,
-      reviewCount: ratingRow?.review_count || 0,
-      reviews,
+      rating: ratingAgg._avg.rating ? Math.round(ratingAgg._avg.rating * 10) / 10 : null,
+      reviewCount: ratingAgg._count.rating || 0,
+      reviews: reviews.map((r) => ({
+        ...r,
+        reviewer_name: r.reviewer?.displayName,
+        reviewer_color: r.reviewer?.avatarColor,
+      })),
     });
   } catch (error) { next(error); }
 }
@@ -164,14 +163,18 @@ export async function getPublicProfile(req, res, next) {
 /* ── Update user's own profile (generic fields) ── */
 export async function updateMyProfile(req, res, next) {
   try {
-    const db = getDb();
+    const prisma = getPrisma();
     const userId = req.userId;
     const { displayName, biography, location } = req.body;
 
-    await dbRun(db,
-      `UPDATE users SET display_name = COALESCE(?, display_name), biography = COALESCE(?, biography), location = COALESCE(?, location), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [displayName, biography, location, userId]
-    );
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        displayName: displayName ?? undefined,
+        biography: biography ?? undefined,
+        location: location ?? undefined,
+      },
+    });
 
     res.json({ message: 'Profile updated' });
   } catch (error) { next(error); }
@@ -182,31 +185,31 @@ function formatProfile(p, role) {
     return {
       category: p.category,
       niche: p.niche,
-      instagramHandle: p.instagram_handle,
-      instagramFollowers: p.instagram_followers,
-      instagramEngagement: p.instagram_engagement,
-      tiktokHandle: p.tiktok_handle,
-      tiktokFollowers: p.tiktok_followers,
-      tiktokAvgViews: p.tiktok_avg_views,
-      youtubeHandle: p.youtube_handle,
-      youtubeSubscribers: p.youtube_subscribers,
-      youtubeAvgViews: p.youtube_avg_views,
-      audienceAgeRange: p.audience_age_range,
-      audienceLocation: p.audience_location,
-      minRate: p.min_rate,
-      maxRate: p.max_rate,
+      instagramHandle: p.instagramHandle,
+      instagramFollowers: p.instagramFollowers,
+      instagramEngagement: p.instagramEngagement,
+      tiktokHandle: p.tiktokHandle,
+      tiktokFollowers: p.tiktokFollowers,
+      tiktokAvgViews: p.tiktokAvgViews,
+      youtubeHandle: p.youtubeHandle,
+      youtubeSubscribers: p.youtubeSubscribers,
+      youtubeAvgViews: p.youtubeAvgViews,
+      audienceAgeRange: p.audienceAgeRange,
+      audienceLocation: p.audienceLocation,
+      minRate: p.minRate,
+      maxRate: p.maxRate,
     };
   }
   return {
-    companyName: p.company_name,
+    companyName: p.companyName,
     industry: p.industry,
     website: p.website,
-    productType: p.product_type,
-    targetAudience: p.target_audience,
-    campaignGoals: p.campaign_goals,
-    minBudget: p.min_budget,
-    maxBudget: p.max_budget,
-    preferredPlatforms: p.preferred_platforms,
-    preferredCategories: p.preferred_categories,
+    productType: p.productType,
+    targetAudience: p.targetAudience,
+    campaignGoals: p.campaignGoals,
+    minBudget: p.minBudget,
+    maxBudget: p.maxBudget,
+    preferredPlatforms: p.preferredPlatforms,
+    preferredCategories: p.preferredCategories,
   };
 }

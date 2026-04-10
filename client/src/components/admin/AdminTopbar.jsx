@@ -6,7 +6,7 @@ const pageTitles = {
   '/admin/dashboard': 'Dashboard Overview',
   '/admin/users': 'Manage Users',
   '/admin/collaborations': 'Manage Collaborations',
-  '/admin/connections': 'Manage Connections',
+  '/admin/connections': 'Connections History',
   '/admin/notifications': 'Manage Notifications',
   '/admin/settings': 'Settings',
 };

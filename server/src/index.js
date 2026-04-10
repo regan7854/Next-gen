@@ -1,6 +1,5 @@
 import dotenv from 'dotenv';
 import app from './server.js';
-import { connectDatabase, closeDatabase } from './lib/database.js';
 import { connectPrismaIfConfigured, disconnectPrisma } from './lib/prisma.js';
 
 dotenv.config();
@@ -15,17 +14,10 @@ if (!process.env.JWT_SECRET) {
 }
 
 try {
-  await connectDatabase();
-} catch (error) {
-  console.error('Failed to connect to SQLite database:', error);
-  process.exit(1);
-}
-
-try {
   await connectPrismaIfConfigured();
 } catch (error) {
-  // Keep server alive on SQLite even if PostgreSQL is unreachable.
-  console.warn('Continuing without PostgreSQL/Prisma:', error.message);
+  console.error('Failed to connect to PostgreSQL:', error.message);
+  process.exit(1);
 }
 
 const server = app.listen(PORT, () => {
@@ -46,7 +38,6 @@ for (const signal of ['SIGTERM', 'SIGINT']) {
   process.on(signal, async () => {
     console.log(`${signal} received, closing server...`);
     server.close(async () => {
-      await closeDatabase();
       await disconnectPrisma();
       process.exit(0);
     });

@@ -2,47 +2,46 @@
  * Seed an admin account into the database.
  *
  * Usage (from project root):
- *   cd server && node ../scripts/seed-admin.mjs [username] [password]
+ *   node scripts/seed-admin.mjs [username] [password]
  *
  * Defaults: admin / admin123
  */
-import { connectDatabase, getDb, dbGet, dbRun } from '../server/src/lib/database.js';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 
 dotenv.config({ path: './server/.env' });
-dotenv.config();                         // fallback to root .env
+dotenv.config();
 
+const prisma = new PrismaClient();
 const username = process.argv[2] || 'admin';
 const password = process.argv[3] || 'admin123';
 
 async function seed() {
-  await connectDatabase();
-  const db = getDb();
-
-  /* ensure admins table exists (initializeTables should have created it) */
-  const existing = await dbGet(db, 'SELECT id FROM admins WHERE username = ?', [username]);
+  const existing = await prisma.admin.findUnique({ where: { username } });
   if (existing) {
     console.log(`Admin "${username}" already exists (id: ${existing.id}). Skipping.`);
+    await prisma.$disconnect();
     process.exit(0);
   }
 
   const id = crypto.randomUUID();
   const hash = await bcrypt.hash(password, 10);
 
-  await dbRun(db,
-    'INSERT INTO admins (id, username, password_hash, role) VALUES (?, ?, ?, ?)',
-    [id, username, hash, 'admin']
-  );
+  await prisma.admin.create({
+    data: { id, username, passwordHash: hash, role: 'admin' },
+  });
 
   console.log(`Admin seeded successfully!`);
   console.log(`  Username: ${username}`);
   console.log(`  Password: ${password}`);
+  await prisma.$disconnect();
   process.exit(0);
 }
 
-seed().catch((err) => {
+seed().catch(async (err) => {
   console.error('Seed failed:', err);
+  await prisma.$disconnect();
   process.exit(1);
 });

@@ -27,31 +27,29 @@ export default function ManageCollaborations() {
 
   useEffect(() => { fetchCollabs(); }, [page, statusFilter]);
 
+  function flash(m) { setMsg(m); setTimeout(() => setMsg(''), 3000); }
+
   async function updateStatus(id, status) {
     try {
       const res = await apiFetch(`/collaborations/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
-      const data = await res.json();
-      setMsg(data.message);
+      flash((await res.json()).message);
       fetchCollabs();
-    } catch { setMsg('Update failed'); }
-    setTimeout(() => setMsg(''), 3000);
+    } catch { flash('Update failed'); }
   }
 
   async function deleteCollab(id) {
     if (!confirm('Delete this collaboration?')) return;
     try {
       const res = await apiFetch(`/collaborations/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      setMsg(data.message);
+      flash((await res.json()).message);
       fetchCollabs();
-    } catch { setMsg('Delete failed'); }
-    setTimeout(() => setMsg(''), 3000);
+    } catch { flash('Delete failed'); }
   }
 
   return (
     <div className="admin-page">
       <div className="admin-page-header">
-        <h2>Manage Collaborations <small className="admin-count-badge">{total}</small></h2>
+        <h2>Collaborations <small className="admin-count-badge">{total}</small></h2>
         <div className="admin-filter-group">
           <Filter size={16} />
           <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} className="admin-select">
@@ -62,18 +60,33 @@ export default function ManageCollaborations() {
           </select>
         </div>
       </div>
+
       {msg && <div className="admin-flash">{msg}</div>}
+
       <div className="admin-card">
         <div className="admin-table-wrapper">
           {loading ? <div className="admin-loading"><div className="admin-spinner" /></div> : (
             <table className="admin-table">
-              <thead><tr><th>ID</th><th>From</th><th>To</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Influencer</th>
+                  <th>Brand</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
               <tbody>
                 {collabs.length > 0 ? collabs.map(c => (
                   <tr key={c.id}>
-                    <td style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.id}</td>
-                    <td className="admin-td-bold">{c.sender_name || `User #${c.sender_id}`}</td>
-                    <td className="admin-td-bold">{c.receiver_name || `User #${c.receiver_id}`}</td>
+                    <td className="admin-td-bold">
+                      {c.influencer_name || c.sender_name || '—'}
+                      <span className="admin-role-tag influencer">Influencer</span>
+                    </td>
+                    <td className="admin-td-bold">
+                      {c.brand_name || c.receiver_name || '—'}
+                      <span className="admin-role-tag brand">Brand</span>
+                    </td>
                     <td>
                       <select value={c.status} onChange={e => updateStatus(c.id, e.target.value)} className={`admin-inline-select admin-status-${c.status}`}>
                         <option value="pending">Pending</option>
@@ -81,10 +94,16 @@ export default function ManageCollaborations() {
                         <option value="rejected">Rejected</option>
                       </select>
                     </td>
-                    <td>{c.created_at ? new Date(c.created_at).toLocaleDateString() : '\u2014'}</td>
-                    <td><button className="admin-icon-btn admin-icon-danger" onClick={() => deleteCollab(c.id)} title="Delete"><Trash2 size={15} /></button></td>
+                    <td>{c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
+                    <td>
+                      <button className="admin-icon-btn admin-icon-danger" onClick={() => deleteCollab(c.id)} title="Delete">
+                        <Trash2 size={15} />
+                      </button>
+                    </td>
                   </tr>
-                )) : <tr><td colSpan={6} className="admin-td-empty">No collaborations found</td></tr>}
+                )) : (
+                  <tr><td colSpan={5} className="admin-td-empty">No collaborations found</td></tr>
+                )}
               </tbody>
             </table>
           )}

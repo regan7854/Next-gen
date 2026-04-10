@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { getDb, dbGet } from '../lib/database.js';
+import { getPrisma } from '../lib/prisma.js';
 
 export default async function adminAuth(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -16,8 +16,11 @@ export default async function adminAuth(req, res, next) {
     }
 
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const db = getDb();
-    const admin = await dbGet(db, 'SELECT id, username, role FROM admins WHERE id = ?', [payload.sub]);
+    const prisma = getPrisma();
+    const admin = await prisma.admin.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, username: true, role: true },
+    });
 
     if (!admin) {
       return res.status(403).json({ message: 'Admin access required' });
