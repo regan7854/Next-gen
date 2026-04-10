@@ -80,7 +80,7 @@ export default function TrendingPage() {
                     <div className="trending-info">
                       <h3>{inf.displayName}</h3>
                       <div className="trending-tags">
-                        {inf.category && <span className="trending-tag">{inf.category}</span>}
+                        {inf.category && inf.category.split(',').map((c) => <span key={c} className="trending-tag">{c.trim()}</span>)}
                         {inf.niche && <span className="trending-tag">{inf.niche}</span>}
                         {inf.platforms?.instagram?.handle && (
                           <span className="trending-tag platform">

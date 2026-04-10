@@ -164,7 +164,7 @@ export default function DiscoverPage() {
               </div>
               <div className="creator-info">
                 <h3>{r.displayName || r.companyName}</h3>
-                {r.category && <span className="role-badge">{r.category}</span>}
+                {r.category && r.category.split(',').map((c) => <span key={c} className="role-badge">{c.trim()}</span>)}
                 {r.industry && <span className="role-badge">{r.industry}</span>}
                 <p>{r.biography || ''}</p>
               </div>
@@ -194,7 +194,7 @@ export default function DiscoverPage() {
               </div>
               <div className="creator-info">
                 <h3>{r.displayName || r.companyName}</h3>
-                {r.category && <span className="role-badge">{r.category}</span>}
+                {r.category && r.category.split(',').map((c) => <span key={c} className="role-badge">{c.trim()}</span>)}
                 {r.industry && <span className="role-badge">{r.industry}</span>}
                 <p>{r.biography || ''}</p>
 

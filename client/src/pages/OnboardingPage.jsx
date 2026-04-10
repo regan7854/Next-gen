@@ -24,10 +24,11 @@ export default function OnboardingPage() {
   const [role, setRole] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showCatDropdown, setShowCatDropdown] = useState(false);
 
   // Influencer fields
   const [inf, setInf] = useState({
-    category: '', niche: '', location: '', biography: '',
+    category: [], niche: '', location: '', biography: '',
     instagramHandle: '', instagramFollowers: '', instagramEngagement: '',
     tiktokHandle: '', tiktokFollowers: '', tiktokAvgViews: '',
     youtubeHandle: '', youtubeSubscribers: '', youtubeAvgViews: '',
@@ -44,6 +45,14 @@ export default function OnboardingPage() {
   });
 
   const updateInf = (e) => setInf((p) => ({ ...p, [e.target.name]: e.target.value }));
+  const toggleCategory = (cat) => {
+    setInf((p) => ({
+      ...p,
+      category: p.category.includes(cat)
+        ? p.category.filter((c) => c !== cat)
+        : [...p.category, cat],
+    }));
+  };
   const updateBrand = (e) => setBrand((p) => ({ ...p, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
@@ -54,6 +63,7 @@ export default function OnboardingPage() {
       if (role === 'influencer') {
         await saveInfluencerProfile({
           ...inf,
+          category: inf.category.join(','),
           instagramFollowers: Number(inf.instagramFollowers) || 0,
           instagramEngagement: Number(inf.instagramEngagement) || 0,
           tiktokFollowers: Number(inf.tiktokFollowers) || 0,
@@ -137,15 +147,40 @@ export default function OnboardingPage() {
             <div className="form-section">
               <h3><Tag size={16} /> Basic Info</h3>
               <div className="form-grid">
-                <label className="field">
+                <div className="field">
                   <span className="field-label">Content Category</span>
-                  <select name="category" value={inf.category} onChange={updateInf} required>
-                    <option value="">Select category</option>
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
-                    ))}
-                  </select>
-                </label>
+                  <div className="multi-select-wrapper">
+                    <button
+                      type="button"
+                      className="multi-select-trigger"
+                      onClick={() => setShowCatDropdown(!showCatDropdown)}
+                    >
+                      {inf.category.length === 0
+                        ? 'Select categories'
+                        : inf.category.map((c) => c.charAt(0).toUpperCase() + c.slice(1)).join(', ')}
+                    </button>
+                    {showCatDropdown && (
+                      <div className="multi-select-options">
+                        <div className="multi-select-list">
+                          {CATEGORIES.map((c) => (
+                            <label key={c} className="multi-select-option">
+                              <input
+                                type="checkbox"
+                                checked={inf.category.includes(c)}
+                                onChange={() => toggleCategory(c)}
+                              />
+                              <span>{c.charAt(0).toUpperCase() + c.slice(1)}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="multi-select-footer">
+                          <span className="multi-select-count">{inf.category.length} selected</span>
+                          <button type="button" className="multi-select-ok" onClick={() => setShowCatDropdown(false)}>OK</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <label className="field">
                   <span className="field-label">Niche / Specialty</span>
                   <input name="niche" value={inf.niche} onChange={updateInf} placeholder="e.g. Street photography" />

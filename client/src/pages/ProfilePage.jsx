@@ -125,7 +125,7 @@ export default function ProfilePage() {
           <h1>{pUser.displayName}</h1>
           <div className="profile-header-meta">
             {pUser.role && pUser.role !== 'user' && <span className="role-badge">{pUser.role}</span>}
-            {profile?.category && <span className="role-badge">{profile.category}</span>}
+            {profile?.category && profile.category.split(',').map((c) => <span key={c} className="role-badge">{c.trim()}</span>)}
             {profile?.industry && <span className="role-badge">{profile.industry}</span>}
             {pUser.location && <span className="location-tag"><MapPin size={13} /> {pUser.location}</span>}
           </div>

@@ -29,7 +29,7 @@ export async function searchInfluencers(req, res, next) {
     `;
     const params = [];
 
-    if (category) { sql += ` AND ip.category = ?`; params.push(category); }
+    if (category) { sql += ` AND ip.category ILIKE ?`; params.push(`%${category}%`); }
     if (location) { sql += ` AND (u.location ILIKE ? OR ip.audience_location ILIKE ?)`; params.push(`%${location}%`, `%${location}%`); }
     if (q) { sql += ` AND (u.display_name ILIKE ? OR u.biography ILIKE ? OR ip.niche ILIKE ?)`; params.push(`%${q}%`, `%${q}%`, `%${q}%`); }
 
