@@ -99,10 +99,9 @@ export default function ManageUsers() {
                     <td>{editingId === u.id ? <input className="admin-inline-input" value={editForm.display_name} onChange={e => setEditForm(f => ({ ...f, display_name: e.target.value }))} /> : <span className="admin-td-bold">{u.display_name}</span>}</td>
                     <td>{editingId === u.id ? <input className="admin-inline-input" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} /> : u.email}</td>
                     <td>{editingId === u.id ? (
-                      <select className="admin-inline-select" value={editForm.role || 'user'} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
+                      <select className="admin-inline-select" value={editForm.role || 'influencer'} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
                         <option value="influencer">Influencer</option>
                         <option value="brand">Brand</option>
-                        <option value="user">User</option>
                       </select>
                     ) : <span className={`admin-status admin-status-${u.role}`}>{u.role || '\u2014'}</span>}</td>
                     <td>{u.created_at ? new Date(u.created_at).toLocaleDateString() : '\u2014'}</td>

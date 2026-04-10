@@ -11,9 +11,7 @@ import AdminDashboard from './pages/admin/AdminDashboard.jsx';
 import ManageUsers from './pages/admin/ManageUsers.jsx';
 import ManageCollaborations from './pages/admin/ManageCollaborations.jsx';
 import ManageConnections from './pages/admin/ManageConnections.jsx';
-import ManageCategories from './pages/admin/ManageCategories.jsx';
 import ManageNotifications from './pages/admin/ManageNotifications.jsx';
-import Reports from './pages/admin/Reports.jsx';
 import AdminSettings from './pages/admin/AdminSettings.jsx';
 import './styles/admin.css';
 
@@ -41,9 +39,7 @@ function App() {
           <Route path="/admin/users" element={<ManageUsers />} />
           <Route path="/admin/collaborations" element={<ManageCollaborations />} />
           <Route path="/admin/connections" element={<ManageConnections />} />
-          <Route path="/admin/categories" element={<ManageCategories />} />
           <Route path="/admin/notifications" element={<ManageNotifications />} />
-          <Route path="/admin/reports" element={<Reports />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
         </Route>
 

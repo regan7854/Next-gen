@@ -1,5 +1,5 @@
 import { useAdminAuth } from '../../context/AdminAuthContext.jsx';
-import { Shield, LogOut } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 
 const pageTitles = {
@@ -7,14 +7,12 @@ const pageTitles = {
   '/admin/users': 'Manage Users',
   '/admin/collaborations': 'Manage Collaborations',
   '/admin/connections': 'Manage Connections',
-  '/admin/categories': 'Manage Categories',
   '/admin/notifications': 'Manage Notifications',
-  '/admin/reports': 'Reports & Analytics',
   '/admin/settings': 'Settings',
 };
 
 export default function AdminTopbar() {
-  const { admin, logout } = useAdminAuth();
+  const { admin } = useAdminAuth();
   const location = useLocation();
   const title = pageTitles[location.pathname] || 'Admin Panel';
 
@@ -36,9 +34,6 @@ export default function AdminTopbar() {
             <span className="admin-topbar-role">{admin?.role || 'Administrator'}</span>
           </div>
         </div>
-        <button className="admin-topbar-logout" onClick={logout} title="Log out">
-          <LogOut size={16} />
-        </button>
       </div>
     </header>
   );
