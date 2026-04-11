@@ -51,7 +51,15 @@ export default function AuthPage() {
 
   const handleRegisterChange = (e) => {
     setRegisterForm((p) => ({ ...p, [e.target.name]: e.target.value }));
-    clearField(e.target.name);
+    if (e.target.name === 'email') {
+      if (/[A-Z]/.test(e.target.value)) {
+        setFieldErrors((p) => ({ ...p, email: 'Invalid email ' }));
+      } else {
+        clearField('email');
+      }
+    } else {
+      clearField(e.target.name);
+    }
   };
 
   // Parse server error response into { field: msg } object
@@ -102,7 +110,8 @@ export default function AuthPage() {
     const errs = {};
     if (!registerForm.username.trim()) errs.username = 'Username is required';
     if (!registerForm.displayName.trim()) errs.displayName = 'Display name is required';
-    if (!EMAIL_RE.test(registerForm.email)) errs.email = 'Check your email address';
+    if (/[A-Z]/.test(registerForm.email)) errs.email = 'Invalid email';
+    else if (!EMAIL_RE.test(registerForm.email)) errs.email = 'Check your email address';
     if (registerForm.password.length < 8) errs.password = 'Password needs 8+ characters';
     if (!/(?=.*[A-Za-z])(?=.*\d)/.test(registerForm.password)) errs.password = 'Password needs letters and numbers';
     if (registerForm.password !== registerForm.confirmPassword) errs.confirmPassword = 'Passwords do not match';
