@@ -20,8 +20,9 @@ export default function NotificationItem({ notification, onMarkAsRead, onDelete 
   };
 
   const getTimeAgo = (date) => {
-    const now = new Date();
-    const diff = now - new Date(date);
+    const parsed = new Date(date);
+    if (!date || isNaN(parsed.getTime())) return '—';
+    const diff = Date.now() - parsed;
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);

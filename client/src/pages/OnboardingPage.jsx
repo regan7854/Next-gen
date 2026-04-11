@@ -25,6 +25,8 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showCatDropdown, setShowCatDropdown] = useState(false);
+  const [showIndustryDropdown, setShowIndustryDropdown] = useState(false);
+  const [showPrefCatDropdown, setShowPrefCatDropdown] = useState(false);
 
   // Influencer fields
   const [inf, setInf] = useState({
@@ -38,10 +40,10 @@ export default function OnboardingPage() {
 
   // Brand fields
   const [brand, setBrand] = useState({
-    companyName: '', industry: '', website: '', productType: '',
+    companyName: '', industry: [], website: '', productType: '',
     targetAudience: '', campaignGoals: '', location: '', biography: '',
     minBudget: '', maxBudget: '',
-    preferredPlatforms: '', preferredCategories: '',
+    preferredPlatforms: '', preferredCategories: [],
   });
 
   const updateInf = (e) => setInf((p) => ({ ...p, [e.target.name]: e.target.value }));
@@ -54,6 +56,22 @@ export default function OnboardingPage() {
     }));
   };
   const updateBrand = (e) => setBrand((p) => ({ ...p, [e.target.name]: e.target.value }));
+  const toggleIndustry = (ind) => {
+    setBrand((p) => ({
+      ...p,
+      industry: p.industry.includes(ind)
+        ? p.industry.filter((i) => i !== ind)
+        : [...p.industry, ind],
+    }));
+  };
+  const togglePrefCategory = (cat) => {
+    setBrand((p) => ({
+      ...p,
+      preferredCategories: p.preferredCategories.includes(cat)
+        ? p.preferredCategories.filter((c) => c !== cat)
+        : [...p.preferredCategories, cat],
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -76,6 +94,8 @@ export default function OnboardingPage() {
       } else {
         await saveBrandProfile({
           ...brand,
+          industry: brand.industry.join(','),
+          preferredCategories: brand.preferredCategories.join(','),
           minBudget: Number(brand.minBudget) || 0,
           maxBudget: Number(brand.maxBudget) || 0,
         });
@@ -286,15 +306,40 @@ export default function OnboardingPage() {
                   <span className="field-label">Company Name</span>
                   <input name="companyName" value={brand.companyName} onChange={updateBrand} placeholder="Your company" required />
                 </label>
-                <label className="field">
+                <div className="field">
                   <span className="field-label">Industry</span>
-                  <select name="industry" value={brand.industry} onChange={updateBrand} required>
-                    <option value="">Select industry</option>
-                    {INDUSTRIES.map((i) => (
-                      <option key={i} value={i}>{i.charAt(0).toUpperCase() + i.slice(1)}</option>
-                    ))}
-                  </select>
-                </label>
+                  <div className="multi-select-wrapper">
+                    <button
+                      type="button"
+                      className="multi-select-trigger"
+                      onClick={() => setShowIndustryDropdown(!showIndustryDropdown)}
+                    >
+                      {brand.industry.length === 0
+                        ? 'Select industries'
+                        : brand.industry.map((i) => i.charAt(0).toUpperCase() + i.slice(1)).join(', ')}
+                    </button>
+                    {showIndustryDropdown && (
+                      <div className="multi-select-options">
+                        <div className="multi-select-list">
+                          {INDUSTRIES.map((i) => (
+                            <label key={i} className="multi-select-option">
+                              <input
+                                type="checkbox"
+                                checked={brand.industry.includes(i)}
+                                onChange={() => toggleIndustry(i)}
+                              />
+                              <span>{i.charAt(0).toUpperCase() + i.slice(1)}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="multi-select-footer">
+                          <span className="multi-select-count">{brand.industry.length} selected</span>
+                          <button type="button" className="multi-select-ok" onClick={() => setShowIndustryDropdown(false)}>OK</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <label className="field">
                   <span className="field-label">Website</span>
                   <input name="website" value={brand.website} onChange={updateBrand} placeholder="https://..." />
@@ -343,10 +388,40 @@ export default function OnboardingPage() {
                   <span className="field-label">Preferred Platforms</span>
                   <input name="preferredPlatforms" value={brand.preferredPlatforms} onChange={updateBrand} placeholder="e.g. instagram, tiktok" />
                 </label>
-                <label className="field">
+                <div className="field">
                   <span className="field-label">Preferred Categories</span>
-                  <input name="preferredCategories" value={brand.preferredCategories} onChange={updateBrand} placeholder="e.g. beauty, fitness" />
-                </label>
+                  <div className="multi-select-wrapper">
+                    <button
+                      type="button"
+                      className="multi-select-trigger"
+                      onClick={() => setShowPrefCatDropdown(!showPrefCatDropdown)}
+                    >
+                      {brand.preferredCategories.length === 0
+                        ? 'Select categories'
+                        : brand.preferredCategories.map((c) => c.charAt(0).toUpperCase() + c.slice(1)).join(', ')}
+                    </button>
+                    {showPrefCatDropdown && (
+                      <div className="multi-select-options">
+                        <div className="multi-select-list">
+                          {CATEGORIES.map((c) => (
+                            <label key={c} className="multi-select-option">
+                              <input
+                                type="checkbox"
+                                checked={brand.preferredCategories.includes(c)}
+                                onChange={() => togglePrefCategory(c)}
+                              />
+                              <span>{c.charAt(0).toUpperCase() + c.slice(1)}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="multi-select-footer">
+                          <span className="multi-select-count">{brand.preferredCategories.length} selected</span>
+                          <button type="button" className="multi-select-ok" onClick={() => setShowPrefCatDropdown(false)}>OK</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 

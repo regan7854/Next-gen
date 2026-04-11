@@ -25,7 +25,9 @@ function getRoute(notification) {
 }
 
 function timeAgo(date) {
-  const diff = Date.now() - new Date(date);
+  const parsed = new Date(date);
+  if (!date || isNaN(parsed.getTime())) return '—';
+  const diff = Date.now() - parsed;
   const m = Math.floor(diff / 60000);
   const h = Math.floor(diff / 3600000);
   const d = Math.floor(diff / 86400000);
