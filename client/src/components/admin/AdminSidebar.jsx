@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Handshake, Link2,
-  Bell, Settings, LogOut
+  Settings, LogOut
 } from 'lucide-react';
 import { useAdminAuth } from '../../context/AdminAuthContext.jsx';
 import LogoMark from '../LogoMark.jsx';
@@ -11,7 +11,6 @@ const navItems = [
   { path: '/admin/users', label: 'Manage Users', icon: Users },
   { path: '/admin/collaborations', label: 'Collaborations', icon: Handshake },
   { path: '/admin/connections', label: 'Connections', icon: Link2 },
-  { path: '/admin/notifications', label: 'Notifications', icon: Bell },
   { path: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 

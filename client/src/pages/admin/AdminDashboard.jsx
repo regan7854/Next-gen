@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAdminAuth } from '../../context/AdminAuthContext.jsx';
 import { BarChart, PieChart } from '../../components/admin/AdminChart.jsx';
-import { Users, Handshake, Clock, UserPlus, Bell } from 'lucide-react';
+import { Users, Handshake, Clock, UserPlus } from 'lucide-react';
 
 const POLL_MS = 5_000;
 
@@ -100,7 +100,6 @@ export default function AdminDashboard() {
         <div className="admin-quick-actions">
           <Link to="/admin/users" className="admin-quick-btn"><Users size={18} /> Manage Users</Link>
           <Link to="/admin/collaborations" className="admin-quick-btn"><Handshake size={18} /> Collaborations</Link>
-          <Link to="/admin/notifications" className="admin-quick-btn"><Bell size={18} /> Notifications</Link>
         </div>
       </div>
 
