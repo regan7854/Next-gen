@@ -459,7 +459,7 @@
 .admin-stats-trend.down { color: #C8552A; background: #FEF2EE; }
 
 /* ── Charts ── */
-.admin-charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1rem; }
+.admin-charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
 
 .ac-card { position: relative; overflow: hidden; }
 .ac-card-badge { position: absolute; top: 1rem; right: 1rem; display: flex; align-items: center; gap: 0.4rem; z-index: 2; }
@@ -690,7 +690,7 @@
 .admin-quick-btn:hover { border-color: #C8552A; color: #C8552A; background: #FEF2EE; transform: translateY(-1px); }
 
 /* ── Grids ── */
-.admin-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1rem; }
+.admin-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
 
 /* ── Search ── */
 .admin-search-form { display: flex; gap: 0.5rem; align-items: center; }

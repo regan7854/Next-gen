@@ -94,15 +94,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="admin-card">
-        <h3 className="admin-card-title">Quick Actions</h3>
-        <div className="admin-quick-actions">
-          <Link to="/admin/users" className="admin-quick-btn"><Users size={18} /> Manage Users</Link>
-          <Link to="/admin/collaborations" className="admin-quick-btn"><Handshake size={18} /> Collaborations</Link>
-        </div>
-      </div>
-
       {/* Recent Activity */}
       <div className="admin-grid-2">
         <div className="admin-card">

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getTrending } from '../services/apiClient.js';
 import { TrendingUp, Users, Star, Instagram, Youtube } from 'lucide-react';
 
@@ -29,6 +30,7 @@ export default function TrendingPage() {
   const [data, setData] = useState({ influencers: [], brands: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     getTrending()
@@ -74,7 +76,7 @@ export default function TrendingPage() {
                   inf.platforms?.youtube?.subscribers || 0
                 );
                 return (
-                  <div key={inf.id} className={`trending-item${inf.rank <= 3 ? ' top-three' : ''}`}>
+                  <div key={inf.id} className={`trending-item clickable${inf.rank <= 3 ? ' top-three' : ''}`} onClick={() => navigate(`/profile/${inf.id}`)}>
                     <div className="trending-rank"><RankBadge rank={inf.rank} /></div>
                     <Avatar name={inf.displayName} color={inf.avatarColor} />
                     <div className="trending-info">
@@ -127,7 +129,7 @@ export default function TrendingPage() {
                 </div>
               )}
               {data.brands.map((brand) => (
-                <div key={brand.id} className={`trending-item${brand.rank <= 3 ? ' top-three' : ''}`}>
+                <div key={brand.id} className={`trending-item clickable${brand.rank <= 3 ? ' top-three' : ''}`} onClick={() => navigate(`/profile/${brand.id}`)}>
                   <div className="trending-rank"><RankBadge rank={brand.rank} /></div>
                   <Avatar name={brand.companyName || brand.displayName} color={brand.avatarColor} size={44} />
                   <div className="trending-info">

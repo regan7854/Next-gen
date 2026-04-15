@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { saveInfluencerProfile, saveBrandProfile } from '../services/apiClient.js';
+import { saveInfluencerProfile, saveBrandProfile, getPublicProfile } from '../services/apiClient.js';
 import {
   User, Building2, ArrowRight, ArrowLeft, MapPin,
   Instagram, Youtube, Hash, DollarSign, Tag, Globe, Target, Megaphone,
@@ -45,6 +45,57 @@ export default function OnboardingPage() {
     minBudget: '', maxBudget: '',
     preferredPlatforms: '', preferredCategories: [],
   });
+
+  // Prefill existing profile data when editing
+  useEffect(() => {
+    if (!user?.id || !user?.role || user.role === 'user') return;
+
+    getPublicProfile(user.id).then((data) => {
+      const existingRole = data.user?.role;
+      const p = data.profile;
+      if (!existingRole || !p) return;
+
+      setRole(existingRole);
+      setStep(2);
+
+      if (existingRole === 'influencer') {
+        setInf({
+          category: p.category ? p.category.split(',').map((c) => c.trim()) : [],
+          niche: p.niche || '',
+          location: data.user.location || '',
+          biography: data.user.biography || '',
+          instagramHandle: p.instagramHandle || '',
+          instagramFollowers: p.instagramFollowers || '',
+          instagramEngagement: p.instagramEngagement || '',
+          tiktokHandle: p.tiktokHandle || '',
+          tiktokFollowers: p.tiktokFollowers || '',
+          tiktokAvgViews: p.tiktokAvgViews || '',
+          youtubeHandle: p.youtubeHandle || '',
+          youtubeSubscribers: p.youtubeSubscribers || '',
+          youtubeAvgViews: p.youtubeAvgViews || '',
+          audienceAgeRange: p.audienceAgeRange || '',
+          audienceLocation: p.audienceLocation || '',
+          minRate: p.minRate || '',
+          maxRate: p.maxRate || '',
+        });
+      } else if (existingRole === 'brand') {
+        setBrand({
+          companyName: p.companyName || '',
+          industry: p.industry ? p.industry.split(',').map((i) => i.trim()) : [],
+          website: p.website || '',
+          productType: p.productType || '',
+          targetAudience: p.targetAudience || '',
+          campaignGoals: p.campaignGoals || '',
+          location: data.user.location || '',
+          biography: data.user.biography || '',
+          minBudget: p.minBudget || '',
+          maxBudget: p.maxBudget || '',
+          preferredPlatforms: p.preferredPlatforms || '',
+          preferredCategories: p.preferredCategories ? p.preferredCategories.split(',').map((c) => c.trim()) : [],
+        });
+      }
+    }).catch(() => { /* first time — no profile yet */ });
+  }, [user]);
 
   const updateInf = (e) => setInf((p) => ({ ...p, [e.target.name]: e.target.value }));
   const toggleCategory = (cat) => {
@@ -104,7 +155,7 @@ export default function OnboardingPage() {
       // update local auth state with new role
       const token = JSON.parse(localStorage.getItem('nextgen-auth'))?.token;
       login({ token, user: { ...user, role } });
-      navigate('/home', { replace: true });
+      navigate(user?.role && user.role !== 'user' ? '/profile' : '/home', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save profile');
     } finally {
@@ -116,7 +167,7 @@ export default function OnboardingPage() {
     <div className="onboarding-page">
       <div className="onboarding-card">
         <div className="onboarding-header">
-          <h1>Set up your profile</h1>
+          <h1>{user?.role && user.role !== 'user' ? 'Edit your profile' : 'Set up your profile'}</h1>
           <p>Tell us about yourself so we can find the best matches for you</p>
           <div className="step-indicator">
             <span className={`step-dot ${step >= 1 ? 'active' : ''}`}>1</span>
@@ -291,7 +342,7 @@ export default function OnboardingPage() {
                 <ArrowLeft size={16} /> Back
               </button>
               <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? 'Saving...' : 'Complete Setup'}
+                {loading ? 'Saving...' : (user?.role && user.role !== 'user' ? 'Save Changes' : 'Complete Setup')}
               </button>
             </div>
           </form>
@@ -430,7 +481,7 @@ export default function OnboardingPage() {
                 <ArrowLeft size={16} /> Back
               </button>
               <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? 'Saving...' : 'Complete Setup'}
+                {loading ? 'Saving...' : (user?.role && user.role !== 'user' ? 'Save Changes' : 'Complete Setup')}
               </button>
             </div>
           </form>

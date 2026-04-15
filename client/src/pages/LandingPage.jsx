@@ -45,10 +45,10 @@ export default function LandingPage() {
         <div className="lp-container">
           <p className="lp-section-label">what you get</p>
           <div className="lp-bento">
-            <div className="lp-card lp-card-span2">
+            <div className="lp-card">
               <div className="lp-card-icon"><TrendingUp size={20} /></div>
               <h3>Trending</h3>
-              <p>See what's actually gaining momentum — updated in real time. Know what's working before everyone else does.</p>
+              <p>See what's actually gaining momentum updated in real time. Know what's working before everyone else does.</p>
             </div>
             <div className="lp-card">
               <div className="lp-card-icon"><Search size={20} /></div>
@@ -58,9 +58,9 @@ export default function LandingPage() {
             <div className="lp-card">
               <div className="lp-card-icon"><Users size={20} /></div>
               <h3>Collaborate</h3>
-              <p>Pitch and lock in partnerships — all in one place.</p>
+              <p>Pitch and lock in partnerships all in one place.</p>
             </div>
-            <div className="lp-card lp-card-span2">
+            <div className="lp-card">
               <div className="lp-card-icon"><BarChart3 size={20} /></div>
               <h3>Track</h3>
               <p>One dashboard for your stats, active collabs, and everything in between. No spreadsheets needed.</p>
