@@ -35,6 +35,7 @@ export default function ProfilePage() {
     tenureUnit: 'days',
   });
   const [collabSent, setCollabSent] = useState(false);
+  const [collabError, setCollabError] = useState('');
   const [showAddCampaign, setShowAddCampaign] = useState(false);
   const [campaignForm, setCampaignForm] = useState({ title: '', description: '', platform: '', resultsSummary: '', reach: '', engagement: '' });
   const [error, setError] = useState(null);
@@ -69,6 +70,14 @@ export default function ProfilePage() {
 
   const handleSendCollab = async (e) => {
     e.preventDefault();
+    setCollabError('');
+    if (collabForm.tenureType === 'fixed') {
+      const v = Number(collabForm.tenureValue);
+      if (!Number.isInteger(v) || v < 1) {
+        setCollabError('Tenure value must be a positive whole number');
+        return;
+      }
+    }
     try {
       await sendCollabRequest({
         receiverId: userId,
@@ -80,7 +89,9 @@ export default function ProfilePage() {
       });
       setCollabSent(true);
       setShowCollabForm(false);
-    } catch { /* ignore */ }
+    } catch (err) {
+      setCollabError(err.response?.data?.message || 'Failed to send request');
+    }
   };
 
   const handleAddCampaign = async (e) => {
@@ -397,6 +408,9 @@ export default function ProfilePage() {
                     </select>
                   </label>
                 </div>
+              )}
+              {collabError && (
+                <p style={{ color: 'var(--error, #ef4444)', fontSize: '0.85rem', marginBottom: 8 }}>{collabError}</p>
               )}
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={() => setShowCollabForm(false)}>Cancel</button>
