@@ -31,7 +31,7 @@ export async function searchInfluencers(req, res, next) {
 
     if (category) { sql += ` AND ip.category ILIKE ?`; params.push(`%${category}%`); }
     if (location) { sql += ` AND (u.location ILIKE ? OR ip.audience_location ILIKE ?)`; params.push(`%${location}%`, `%${location}%`); }
-    if (q) { sql += ` AND (u.display_name ILIKE ? OR u.biography ILIKE ? OR ip.niche ILIKE ?)`; params.push(`%${q}%`, `%${q}%`, `%${q}%`); }
+    if (q) { sql += ` AND (u.display_name ILIKE ? OR u.biography ILIKE ? OR ip.niche ILIKE ? OR ip.category ILIKE ?)`; params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
 
     if (platform === 'instagram') {
       if (minFollowers) { sql += ` AND ip.instagram_followers >= ?`; params.push(Number(minFollowers)); }
@@ -79,7 +79,7 @@ export async function searchInfluencers(req, res, next) {
 export async function searchBrands(req, res, next) {
   try {
     const prisma = getPrisma();
-    const { industry, minBudget, maxBudget, q } = req.query;
+    const { industry, minBudget, maxBudget, location, q } = req.query;
 
     let sql = `
       SELECT u.id, u.display_name, u.biography, u.avatar_color, u.location,
@@ -92,10 +92,11 @@ export async function searchBrands(req, res, next) {
     `;
     const params = [];
 
-    if (industry) { sql += ` AND bp.industry = ?`; params.push(industry); }
+    if (industry) { sql += ` AND bp.industry ILIKE ?`; params.push(`%${industry}%`); }
+    if (location) { sql += ` AND u.location ILIKE ?`; params.push(`%${location}%`); }
     if (minBudget) { sql += ` AND bp.max_budget >= ?`; params.push(Number(minBudget)); }
     if (maxBudget) { sql += ` AND bp.min_budget <= ?`; params.push(Number(maxBudget)); }
-    if (q) { sql += ` AND (u.display_name ILIKE ? OR bp.company_name ILIKE ? OR bp.product_type ILIKE ?)`; params.push(`%${q}%`, `%${q}%`, `%${q}%`); }
+    if (q) { sql += ` AND (u.display_name ILIKE ? OR bp.company_name ILIKE ? OR bp.product_type ILIKE ? OR bp.industry ILIKE ? OR bp.preferred_categories ILIKE ?)`; params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
 
     sql += ` ORDER BY bp.max_budget DESC LIMIT 50`;
 
@@ -135,10 +136,19 @@ export async function getRecommendations(req, res, next) {
         SELECT u.id, u.display_name, u.biography, u.avatar_color, u.location, ip.*
         FROM users u JOIN influencer_profiles ip ON u.id = ip.user_id
         WHERE u.role = 'influencer'
+          AND (ip.category IS NOT NULL AND TRIM(ip.category) != '')
+          AND (
+            COALESCE(ip.instagram_followers, 0) > 0
+            OR COALESCE(ip.tiktok_followers, 0) > 0
+            OR COALESCE(ip.youtube_subscribers, 0) > 0
+          )
       `;
+
+      const prefCats = (brand.preferred_categories || '').toLowerCase().split(/[,;\s]+/).filter(Boolean);
 
       results = influencers.map((inf) => {
         const score = calculateMatchScore(brand, inf, 'brand');
+        const categoryMatch = prefCats.length > 0 && prefCats.some((c) => (inf.category || '').toLowerCase().includes(c));
         return {
           id: inf.id, displayName: inf.display_name, biography: inf.biography,
           avatarColor: inf.avatar_color, location: inf.location,
@@ -148,9 +158,11 @@ export async function getRecommendations(req, res, next) {
             tiktok: { handle: inf.tiktok_handle, followers: inf.tiktok_followers, avgViews: inf.tiktok_avg_views },
             youtube: { handle: inf.youtube_handle, subscribers: inf.youtube_subscribers, avgViews: inf.youtube_avg_views },
           },
-          minRate: inf.min_rate, maxRate: inf.max_rate, matchScore: score,
+          minRate: inf.min_rate, maxRate: inf.max_rate, matchScore: score, categoryMatch,
         };
-      }).filter((r) => r.matchScore > 0).sort((a, b) => b.matchScore - a.matchScore).slice(0, 20);
+      }).filter((r) => r.matchScore > 0)
+        .sort((a, b) => (b.categoryMatch - a.categoryMatch) || (b.matchScore - a.matchScore))
+        .slice(0, 20);
 
     } else if (user.role === 'influencer') {
       const inf = await prisma.influencerProfile.findUnique({ where: { userId } });
@@ -160,17 +172,24 @@ export async function getRecommendations(req, res, next) {
         SELECT u.id, u.display_name, u.biography, u.avatar_color, u.location, bp.*
         FROM users u JOIN brand_profiles bp ON u.id = bp.user_id
         WHERE u.role = 'brand'
+          AND (bp.preferred_categories IS NOT NULL AND TRIM(bp.preferred_categories) != '')
+          AND (bp.preferred_platforms IS NOT NULL AND TRIM(bp.preferred_platforms) != '')
       `;
+
+      const infCat = (inf.category || '').toLowerCase();
 
       results = brands.map((brand) => {
         const score = calculateMatchScore(brand, inf, 'influencer');
+        const categoryMatch = infCat && (brand.preferred_categories || '').toLowerCase().includes(infCat);
         return {
           id: brand.id, displayName: brand.display_name, companyName: brand.company_name,
           biography: brand.biography, avatarColor: brand.avatar_color, location: brand.location,
           industry: brand.industry, campaignGoals: brand.campaign_goals,
-          minBudget: brand.min_budget, maxBudget: brand.max_budget, matchScore: score,
+          minBudget: brand.min_budget, maxBudget: brand.max_budget, matchScore: score, categoryMatch,
         };
-      }).filter((r) => r.matchScore > 0).sort((a, b) => b.matchScore - a.matchScore).slice(0, 20);
+      }).filter((r) => r.matchScore > 0)
+        .sort((a, b) => (b.categoryMatch - a.categoryMatch) || (b.matchScore - a.matchScore))
+        .slice(0, 20);
     }
 
     res.json({ results });
@@ -268,15 +287,19 @@ function calculateMatchScore(brand, influencer, perspective) {
   let score = 0;
   let factors = 0;
 
-  const prefCats = (brand.preferred_categories || brand.preferredCategories || '').toLowerCase();
-  const infCat = (influencer.category || '').toLowerCase();
-  if (prefCats && infCat && prefCats.includes(infCat)) score += 30;
-  else if (infCat) score += 5;
+  const prefCatList = (brand.preferred_categories || brand.preferredCategories || '')
+    .toLowerCase().split(/[,;\s]+/).filter(Boolean);
+  const infCatList = (influencer.category || '').toLowerCase().split(/[,;\s]+/).filter(Boolean);
+  const hasCatPreference = prefCatList.length > 0;
+  const catMatch = hasCatPreference && infCatList.some((c) => prefCatList.includes(c));
+  if (catMatch) score += 30;
+  else if (!hasCatPreference && infCatList.length > 0) score += 5;
   factors += 30;
 
   const prefPlat = (brand.preferred_platforms || brand.preferredPlatforms || '').toLowerCase();
+  const hasPlatPreference = prefPlat.trim().length > 0;
   let platScore = 0;
-  if (prefPlat) {
+  if (hasPlatPreference) {
     if (prefPlat.includes('instagram') && (influencer.instagram_followers || influencer.instagramFollowers || 0) > 0) platScore += 7;
     if (prefPlat.includes('tiktok') && (influencer.tiktok_followers || influencer.tiktokFollowers || 0) > 0) platScore += 7;
     if (prefPlat.includes('youtube') && (influencer.youtube_subscribers || influencer.youtubeSubscribers || 0) > 0) platScore += 6;
@@ -285,6 +308,10 @@ function calculateMatchScore(brand, influencer, perspective) {
     if ((influencer.tiktok_followers || influencer.tiktokFollowers || 0) > 0) platScore += 7;
     if ((influencer.youtube_subscribers || influencer.youtubeSubscribers || 0) > 0) platScore += 6;
   }
+
+  // Brand has category preference but influencer doesn't match → exclude entirely
+  if (hasCatPreference && !catMatch) return 0;
+
   score += platScore;
   factors += 20;
 

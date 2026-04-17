@@ -43,7 +43,7 @@ export default function DashboardPage() {
         }
         // load recommendations
         const recData = await getRecommendations().catch(() => ({ results: [] }));
-        if (mounted) setRecommendations(recData.results?.slice(0, 3) || []);
+        if (mounted) setRecommendations(recData.results?.slice(0, 5) || []);
       } catch {
         if (mounted) setLoading(false);
       }

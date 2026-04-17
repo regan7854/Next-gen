@@ -26,7 +26,7 @@ export default function DiscoverPage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({ category: '', platform: '', minFollowers: '', industry: '', minBudget: '' });
+  const [filters, setFilters] = useState({ category: '', platform: '', minFollowers: '', location: '', industry: '', minBudget: '', maxBudget: '' });
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -55,6 +55,7 @@ export default function DiscoverPage() {
           category: filters.category || undefined,
           platform: filters.platform || undefined,
           minFollowers: filters.minFollowers || undefined,
+          location: filters.location || undefined,
         });
         setResults(data.results || []);
       } else {
@@ -62,6 +63,8 @@ export default function DiscoverPage() {
           q: query || undefined,
           industry: filters.industry || undefined,
           minBudget: filters.minBudget || undefined,
+          maxBudget: filters.maxBudget || undefined,
+          location: filters.location || undefined,
         });
         setResults(data.results || []);
       }
@@ -87,11 +90,9 @@ export default function DiscoverPage() {
         <button className={`dtab ${tab === 'brands' ? 'active' : ''}`} onClick={() => setTab('brands')}>
           <Building2 size={16} /> Brands
         </button>
-        {recommendations.length > 0 && (
-          <button className={`dtab ${tab === 'recommended' ? 'active' : ''}`} onClick={() => setTab('recommended')}>
-            <Sparkles size={16} /> For You
-          </button>
-        )}
+        <button className={`dtab ${tab === 'recommended' ? 'active' : ''}`} onClick={() => setTab('recommended')}>
+          <Sparkles size={16} /> For You
+        </button>
       </div>
 
       {/* Search & filters */}
@@ -135,6 +136,10 @@ export default function DiscoverPage() {
                 <span className="field-label">Min Followers</span>
                 <input type="number" value={filters.minFollowers} onChange={(e) => setFilters((p) => ({ ...p, minFollowers: e.target.value }))} placeholder="0" />
               </label>
+              <label className="field">
+                <span className="field-label">Location</span>
+                <input value={filters.location} onChange={(e) => setFilters((p) => ({ ...p, location: e.target.value }))} placeholder="e.g. Kathmandu" />
+              </label>
             </>
           ) : (
             <>
@@ -145,6 +150,14 @@ export default function DiscoverPage() {
               <label className="field">
                 <span className="field-label">Min Budget</span>
                 <input type="number" value={filters.minBudget} onChange={(e) => setFilters((p) => ({ ...p, minBudget: e.target.value }))} placeholder="0" />
+              </label>
+              <label className="field">
+                <span className="field-label">Max Budget</span>
+                <input type="number" value={filters.maxBudget} onChange={(e) => setFilters((p) => ({ ...p, maxBudget: e.target.value }))} placeholder="Any" />
+              </label>
+              <label className="field">
+                <span className="field-label">Location</span>
+                <input value={filters.location} onChange={(e) => setFilters((p) => ({ ...p, location: e.target.value }))} placeholder="e.g. Kathmandu" />
               </label>
             </>
           )}
@@ -160,20 +173,71 @@ export default function DiscoverPage() {
                 <div className="creator-avatar" style={{ background: r.avatarColor || 'var(--accent)' }}>
                   {(r.displayName || r.companyName || '?')[0]}
                 </div>
-                <span className="match-badge">{r.matchScore}% match</span>
+                {r.avgRating && (
+                  <span className="rating-small"><Star size={12} /> {r.avgRating}</span>
+                )}
               </div>
               <div className="creator-info">
                 <h3>{r.displayName || r.companyName}</h3>
                 {r.category && r.category.split(',').map((c) => <span key={c} className="role-badge">{c.trim()}</span>)}
                 {r.industry && <span className="role-badge">{r.industry}</span>}
                 <p>{r.biography || ''}</p>
+
+                {r.platforms && (
+                  <div className="platform-stats">
+                    {r.platforms.instagram?.followers > 0 && (
+                      <span className="plat-stat"><Instagram size={13} /> {formatNum(r.platforms.instagram.followers)}</span>
+                    )}
+                    {r.platforms.tiktok?.followers > 0 && (
+                      <span className="plat-stat"><Hash size={13} /> {formatNum(r.platforms.tiktok.followers)}</span>
+                    )}
+                    {r.platforms.youtube?.subscribers > 0 && (
+                      <span className="plat-stat"><Youtube size={13} /> {formatNum(r.platforms.youtube.subscribers)}</span>
+                    )}
+                  </div>
+                )}
+
+                {r.maxBudget > 0 && (
+                  <span className="budget-range">Budget: NPR {formatNum(r.minBudget)} - {formatNum(r.maxBudget)}</span>
+                )}
+
+                {r.location && (
+                  <span className="location-tag"><MapPin size={12} /> {r.location}</span>
+                )}
+
+                <div className="compatibility-score">
+                  <div className="compat-label">
+                    <Sparkles size={12} />
+                    <span>Compatibility</span>
+                    <strong>{r.matchScore}%</strong>
+                  </div>
+                  <div className="compat-bar">
+                    <div
+                      className="compat-fill"
+                      style={{
+                        width: `${r.matchScore}%`,
+                        background: r.matchScore >= 70
+                          ? 'var(--success, #22c55e)'
+                          : r.matchScore >= 40
+                            ? 'var(--accent)'
+                            : 'var(--warning, #f59e0b)',
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
               <button type="button" className="btn-connect" onClick={(e) => { e.stopPropagation(); navigate(`/profile/${r.id}`); }}>
                 View Profile
               </button>
             </div>
           ))}
-          {recommendations.length === 0 && <div className="empty-state"><p>Complete your profile to get personalized recommendations.</p></div>}
+          {recommendations.length === 0 && (
+            <div className="empty-state">
+              <Sparkles size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
+              <p>No matches found for your preferred categories yet.</p>
+              <p style={{ fontSize: '0.85rem', opacity: 0.6 }}>Try updating your profile preferences to broaden your results.</p>
+            </div>
+          )}
         </div>
       )}
 

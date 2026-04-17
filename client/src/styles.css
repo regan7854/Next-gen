@@ -1044,6 +1044,29 @@ textarea { resize: vertical; min-height: 60px; line-height: 1.6; }
   white-space: nowrap;
 }
 
+.compatibility-score {
+  margin-top: 10px;
+}
+
+.compat-label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 5px;
+}
+
+.compat-label strong {
+  margin-left: auto; font-size: 0.82rem; color: var(--text-primary);
+}
+
+.compat-bar {
+  height: 6px; border-radius: 999px;
+  background: var(--border); overflow: hidden;
+}
+
+.compat-fill {
+  height: 100%; border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
 .platform-stats {
   display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0;
 }

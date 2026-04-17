@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { apiClient } from '../services/apiClient.js';
 import LogoMark from '../components/LogoMark.jsx';
@@ -34,6 +35,8 @@ export default function AuthPage() {
   const [mode, setMode] = useState('login');
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loginForm, setLoginForm] = useState({ identifier: '', password: '' });
   const [registerForm, setRegisterForm] = useState({
@@ -113,7 +116,7 @@ export default function AuthPage() {
     if (/[A-Z]/.test(registerForm.email)) errs.email = 'Invalid email';
     else if (!EMAIL_RE.test(registerForm.email)) errs.email = 'Check your email address';
     if (registerForm.password.length < 8) errs.password = 'Password needs 8+ characters';
-    if (!/(?=.*[A-Za-z])(?=.*\d)/.test(registerForm.password)) errs.password = 'Password needs letters and numbers';
+    if (!/(?=.*[A-Za-z])(?=.*\d)/.test(registerForm.password)) errs.password = 'Password must be 8+ characters with letters and numbers".';
     if (registerForm.password !== registerForm.confirmPassword) errs.confirmPassword = 'Passwords do not match';
     if (Object.keys(errs).length) { setFieldErrors(errs); return; }
 
@@ -205,14 +208,26 @@ export default function AuthPage() {
               </Field>
               <div className="ap-row">
                 <Field label="Password" error={fe.password}>
-                  <input name="password" type="password" value={registerForm.password}
-                    onChange={handleRegisterChange} placeholder="8+ chars, letters & numbers"
-                    className={fe.password ? 'ap-input-err' : ''} />
+                  <div className="ap-password-wrap">
+                    <input name="password" type={showPassword ? 'text' : 'password'} value={registerForm.password}
+                      onChange={handleRegisterChange} placeholder="8+ chars, letters & numbers"
+                      className={fe.password ? 'ap-input-err' : ''} />
+                    <button type="button" className="ap-eye-btn" onMouseDown={e => e.preventDefault()}
+                      onClick={() => setShowPassword(v => !v)}>
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </Field>
                 <Field label="Confirm Password" error={fe.confirmPassword}>
-                  <input name="confirmPassword" type="password" value={registerForm.confirmPassword}
-                    onChange={handleRegisterChange} placeholder="Re-enter password"
-                    className={fe.confirmPassword ? 'ap-input-err' : ''} />
+                  <div className="ap-password-wrap">
+                    <input name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} value={registerForm.confirmPassword}
+                      onChange={handleRegisterChange} placeholder="Re-enter password"
+                      className={fe.confirmPassword ? 'ap-input-err' : ''} />
+                    <button type="button" className="ap-eye-btn" onMouseDown={e => e.preventDefault()}
+                      onClick={() => setShowConfirmPassword(v => !v)}>
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </Field>
               </div>
               <Field label={<>Bio <span className="ap-optional">(optional)</span></>}>
@@ -231,9 +246,15 @@ export default function AuthPage() {
                   className={fe.identifier ? 'ap-input-err' : ''} />
               </Field>
               <Field label="Password" error={fe.password}>
-                <input name="password" type="password" value={loginForm.password}
-                  onChange={handleLoginChange} placeholder="Enter your password"
-                  className={fe.password ? 'ap-input-err' : ''} />
+                <div className="ap-password-wrap">
+                  <input name="password" type={showPassword ? 'text' : 'password'} value={loginForm.password}
+                    onChange={handleLoginChange} placeholder="Enter your password"
+                    className={fe.password ? 'ap-input-err' : ''} />
+                  <button type="button" className="ap-eye-btn" onMouseDown={e => e.preventDefault()}
+                    onClick={() => setShowPassword(v => !v)}>
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </Field>
               <button type="submit" disabled={loading} className="ap-submit">
                 {loading ? 'Signing in…' : 'Sign in'}

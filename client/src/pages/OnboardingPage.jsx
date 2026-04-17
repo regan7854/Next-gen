@@ -155,7 +155,7 @@ export default function OnboardingPage() {
       // update local auth state with new role
       const token = JSON.parse(localStorage.getItem('nextgen-auth'))?.token;
       login({ token, user: { ...user, role } });
-      navigate(user?.role && user.role !== 'user' ? '/profile' : '/home', { replace: true });
+      navigate('/profile', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save profile');
     } finally {
