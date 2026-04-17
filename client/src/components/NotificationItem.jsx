@@ -32,7 +32,7 @@ export default function NotificationItem({ notification, onMarkAsRead, onDelete 
     return `${days}d ago`;
   };
 
-  const isRead = notification.is_read;
+  const isRead = notification.isRead || notification.is_read;
 
   const isCollabNotif = ['collab_request', 'collab_response'].includes(notification.type);
 
@@ -56,7 +56,7 @@ export default function NotificationItem({ notification, onMarkAsRead, onDelete 
       <div className="notification-content">
         <h4 className="notification-title">{notification.title}</h4>
         <p className="notification-description">{notification.body}</p>
-        <span className="notification-time">{getTimeAgo(notification.created_at)}</span>
+        <span className="notification-time">{getTimeAgo(notification.createdAt || notification.created_at)}</span>
       </div>
 
       <div className="notification-actions">

@@ -370,7 +370,12 @@ export default function OnboardingPage() {
               <div className="form-grid">
                 <label className="field">
                   <span className="field-label">Audience Age Range</span>
-                  <input name="audienceAgeRange" value={inf.audienceAgeRange} onChange={updateInf} placeholder="e.g. 18-34" />
+                  <select name="audienceAgeRange" value={inf.audienceAgeRange} onChange={updateInf}>
+                    <option value="">Select age range</option>
+                    {TARGET_AUDIENCES.map((v) => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </select>
                 </label>
                 <label className="field">
                   <span className="field-label">Audience Location</span>

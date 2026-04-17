@@ -65,10 +65,10 @@ export default function ManageNotifications() {
               <tbody>
                 {notifications.length > 0 ? notifications.map(n => (
                   <tr key={n.id}>
-                    <td className="admin-td-bold">{n.user_name || `#${n.user_id}`}</td>
+                    <td className="admin-td-bold">{n.user_name || `#${n.userId || n.user_id}`}</td>
                     <td><span className="admin-badge">{n.type || '\u2014'}</span></td>
                     <td className="admin-td-msg">{n.title}</td>
-                    <td>{n.created_at ? new Date(n.created_at).toLocaleDateString() : '\u2014'}</td>
+                    <td>{(n.createdAt || n.created_at) ? new Date(n.createdAt || n.created_at).toLocaleDateString() : '\u2014'}</td>
                   </tr>
                 )) : <tr><td colSpan={4} className="admin-td-empty">No notifications found</td></tr>}
               </tbody>

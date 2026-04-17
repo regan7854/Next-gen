@@ -188,7 +188,7 @@ export default function DashboardPage() {
                     <div className="activity-dot"></div>
                     <div>
                       <p className="activity-text">{n.body || n.title}</p>
-                      <span className="activity-time">{new Date(n.created_at).toLocaleDateString()}</span>
+                      <span className="activity-time">{new Date(n.createdAt || n.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
                 ))}

@@ -12,7 +12,7 @@ export function NotificationProvider({ children }) {
       .catch(() => setNotifications([]));
   }, []);
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadCount = notifications.filter(n => !(n.isRead || n.is_read)).length;
 
   const markAsRead = async (id) => {
     try {
@@ -25,7 +25,7 @@ export function NotificationProvider({ children }) {
 
   const markAllAsRead = () => {
     notifications
-      .filter(n => !n.is_read)
+      .filter(n => !(n.isRead || n.is_read))
       .forEach(n => markAsRead(n.id));
   };
 

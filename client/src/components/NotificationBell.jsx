@@ -52,7 +52,7 @@ export default function NotificationBell() {
   }, []);
 
   function handleNotifClick(n) {
-    if (!n.is_read) markAsRead(n.id);
+    if (!(n.isRead || n.is_read)) markAsRead(n.id);
     const route = getRoute(n);
     if (route) navigate(route);
     setOpen(false);
@@ -87,7 +87,7 @@ export default function NotificationBell() {
               notifications.slice(0, 20).map((n) => (
                 <div
                   key={n.id}
-                  className={`notif-dropdown-item ${n.is_read ? 'read' : 'unread'}`}
+                  className={`notif-dropdown-item ${(n.isRead || n.is_read) ? 'read' : 'unread'}`}
                   onClick={() => handleNotifClick(n)}
                 >
                   <div className="notif-item-icon">{getIcon(n.type)}</div>
