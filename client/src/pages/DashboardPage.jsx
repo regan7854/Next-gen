@@ -142,26 +142,32 @@ export default function DashboardPage() {
           </div>
 
           {/* Top Matches preview */}
-          {recommendations.length > 0 && (
-            <div className="card">
-              <h3><Sparkles size={18} /> Top Matches</h3>
-              <div className="match-preview-list">
-                {recommendations.map((r) => (
-                  <div key={r.id} className="match-preview-item" onClick={() => navigate(`/profile/${r.id}`)}>
-                    <div className="match-avatar" style={{ background: r.avatarColor || 'var(--accent)' }}>
-                      {(r.displayName || r.companyName || '?')[0]}
+          <div className="card">
+            <h3><Sparkles size={18} /> Top Matches</h3>
+            {recommendations.length > 0 ? (
+              <>
+                <div className="match-preview-list">
+                  {recommendations.map((r) => (
+                    <div key={r.id} className="match-preview-item" onClick={() => navigate(`/profile/${r.id}`)}>
+                      <div className="match-avatar" style={{ background: r.avatarColor || 'var(--accent)' }}>
+                        {(r.displayName || r.companyName || '?')[0]}
+                      </div>
+                      <div className="match-info">
+                        <span className="match-name">{r.displayName || r.companyName}</span>
+                        <span className="match-detail">{r.category || r.industry || ''}</span>
+                      </div>
+                      <span className="match-score">{r.matchScore}%</span>
                     </div>
-                    <div className="match-info">
-                      <span className="match-name">{r.displayName || r.companyName}</span>
-                      <span className="match-detail">{r.category || r.industry || ''}</span>
-                    </div>
-                    <span className="match-score">{r.matchScore}%</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <Link to="/discover" className="view-all-link">View all matches <ArrowRight size={14} /></Link>
+              </>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '16px 0', opacity: 0.6 }}>
+                <p style={{ fontSize: '0.85rem' }}>No matches yet.</p>
               </div>
-              <Link to="/discover" className="view-all-link">View all matches <ArrowRight size={14} /></Link>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Notifications */}
           {notifications.length > 0 && (
