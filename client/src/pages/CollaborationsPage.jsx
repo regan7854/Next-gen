@@ -60,7 +60,8 @@ export default function CollaborationsPage() {
     setHistoryLoading(true);
     try {
       const data = await getNegotiationHistory(request.id);
-      setNegotiationHistory(data.messages || []);
+      const sorted = (data.messages || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setNegotiationHistory(sorted);
     } catch { setNegotiationHistory([]); }
     setHistoryLoading(false);
   };
@@ -78,8 +79,9 @@ export default function CollaborationsPage() {
       });
       // Refresh history
       const data = await getNegotiationHistory(negotiateModal.id);
-      setNegotiationHistory(data.messages || []);
-      const lastMsg = data.messages?.length ? data.messages[data.messages.length - 1] : null;
+      const sorted = (data.messages || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setNegotiationHistory(sorted);
+      const lastMsg = sorted.length ? sorted[sorted.length - 1] : null;
       setNegotiateForm({
         proposedBudget: lastMsg ? lastMsg.proposedBudget : '',
         proposedTenureValue: lastMsg?.proposedTenureValue || negotiateForm.proposedTenureValue,
@@ -117,15 +119,16 @@ export default function CollaborationsPage() {
     e.preventDefault();
     if (!reviewModal) return;
     try {
+      const revieweeId = tab === 'received' ? reviewModal.senderId : reviewModal.receiverId;
       await leaveReview({
-        revieweeId: reviewModal.senderId,
+        revieweeId,
         collabRequestId: reviewModal.id,
         rating: reviewForm.rating,
         comment: reviewForm.comment,
       });
       setReviewModal(null);
       setReviewForm({ rating: 5, comment: '' });
-    } catch { /* ignore */ }
+    } catch (err) { console.error('Review failed:', err); }
   };
 
   const statusColor = (status) => {
@@ -226,17 +229,20 @@ export default function CollaborationsPage() {
 
               {r.message && <p className="collab-message">{r.message}</p>}
 
-              {r.budgetOffered > 0 && (
-                <span className="collab-budget">Budget: NPR {r.budgetOffered.toLocaleString()}</span>
-              )}
-
-              <span className="collab-budget">
-                Tenure: {formatTenure(r)}
-              </span>
-
-              {getDateRangeText(r) && (
-                <span className="collab-budget">Duration: {getDateRangeText(r)}</span>
-              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div>
+                  {r.budgetOffered > 0 && (
+                    <span className="collab-budget">Budget: NPR {r.budgetOffered.toLocaleString()}</span>
+                  )}
+                  <span className="collab-budget">Tenure: {formatTenure(r)}</span>
+                  {getDateRangeText(r) && (
+                    <span className="collab-budget">Duration: {getDateRangeText(r)}</span>
+                  )}
+                </div>
+                <button className="btn-history" onClick={() => openNegotiateModal(r)}>
+                  <History size={14} /> Negotiation History
+                </button>
+              </div>
 
               {/* Actions for received pending requests */}
               {tab === 'received' && r.status === 'pending' && (
@@ -282,7 +288,7 @@ export default function CollaborationsPage() {
               )}
 
               {/* Leave review button for completed collabs */}
-              {r.status === 'accepted' && tab === 'received' && (
+              {r.status === 'accepted' && (
                 <button className="btn-review" onClick={() => setReviewModal(r)}>
                   <Star size={14} /> Leave Review
                 </button>
@@ -296,14 +302,14 @@ export default function CollaborationsPage() {
       {reviewModal && (
         <div className="modal-overlay" onClick={() => setReviewModal(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3>Review {reviewModal.senderName}</h3>
+            <h3>Review {tab === 'received' ? reviewModal.senderName : reviewModal.receiverName}</h3>
             <form onSubmit={handleReview}>
               <label className="field">
                 <span className="field-label">Rating</span>
                 <div className="star-rating">
                   {[1, 2, 3, 4, 5].map((s) => (
-                    <button key={s} type="button" className={`star-btn ${reviewForm.rating >= s ? 'filled' : ''}`} onClick={() => setReviewForm((p) => ({ ...p, rating: s }))}>
-                      <Star size={20} />
+                    <button key={s} type="button" className={`star-btn ${reviewForm.rating >= s ? 'active' : ''}`} onClick={() => setReviewForm((p) => ({ ...p, rating: s }))}>
+                      <Star size={20} fill={reviewForm.rating >= s ? 'currentColor' : 'none'} />
                     </button>
                   ))}
                 </div>

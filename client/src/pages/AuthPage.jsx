@@ -67,6 +67,7 @@ export default function AuthPage() {
 
   // Parse server error response into { field: msg } object
   const parseServerErrors = (err) => {
+    if (err.networkError) return { _general: err.friendlyMessage };
     const data = err.response?.data;
     if (!data) return { _general: 'Something went wrong. Try again.' };
 

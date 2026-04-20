@@ -1131,7 +1131,7 @@ textarea { resize: vertical; min-height: 60px; line-height: 1.6; }
 .collab-status.pending { background: rgba(245,158,11,0.15); color: #D97706; }
 .collab-status.accepted { background: rgba(26,138,94,0.12); color: var(--success); }
 .collab-status.rejected { background: var(--error-bg); color: var(--error); }
-.collab-status.negotiating { background: rgba(70,130,220,0.12); color: #2a6cb8; }
+.collab-status.negotiating { background: rgba(0,0,0,0.08); color: #111111; }
 
 .collab-message {
   font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;
@@ -1183,6 +1183,15 @@ textarea { resize: vertical; min-height: 60px; line-height: 1.6; }
   display: flex; align-items: center; gap: 5px;
 }
 .btn-review:hover { background: rgba(200,85,42,0.12); border-color: #C8552A; }
+
+.btn-history {
+  padding: 6px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-secondary);
+  font-family: var(--font); font-size: 0.78rem; font-weight: 600;
+  cursor: pointer; transition: all var(--transition);
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.btn-history:hover { border-color: var(--text-secondary); color: var(--text); }
 
 /* ===== MODALS ===== */
 .modal-overlay {

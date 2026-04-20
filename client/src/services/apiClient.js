@@ -21,6 +21,18 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+// Normalise network-level failures (ECONNRESET, server restart, etc.)
+apiClient.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (!err.response) {
+      err.networkError = true;
+      err.friendlyMessage = 'Cannot reach the server. It may be restarting — please try again in a moment.';
+    }
+    return Promise.reject(err);
+  },
+);
+
 /* ── Auth ── */
 export async function registerUser(payload) {
   const { data } = await apiClient.post('/auth/register', payload);

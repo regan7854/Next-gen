@@ -142,7 +142,7 @@ export default function ProfilePage() {
           </div>
           {rating && (
             <div className="profile-rating">
-              <Star size={15} fill="var(--accent)" stroke="var(--accent)" />
+              <Star size={15} fill="#D97706" stroke="#D97706" />
               <span>{rating}</span>
               <span className="muted">({reviewCount} review{reviewCount !== 1 ? 's' : ''})</span>
             </div>
@@ -347,11 +347,11 @@ export default function ProfilePage() {
                     <span className="review-name">{r.reviewer_name}</span>
                     <div className="review-stars">
                       {[1, 2, 3, 4, 5].map((s) => (
-                        <Star key={s} size={12} fill={s <= r.rating ? 'var(--accent)' : 'none'} stroke={s <= r.rating ? 'var(--accent)' : 'var(--border)'} />
+                        <Star key={s} size={12} fill={s <= r.rating ? '#D97706' : 'none'} stroke={s <= r.rating ? '#D97706' : '#A8A29E'} />
                       ))}
                     </div>
                   </div>
-                  <span className="review-date">{new Date(r.created_at).toLocaleDateString()}</span>
+                  <span className="review-date">{new Date(r.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
                 </div>
                 {r.comment && <p className="review-comment">{r.comment}</p>}
               </div>

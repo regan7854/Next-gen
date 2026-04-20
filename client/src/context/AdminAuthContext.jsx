@@ -78,6 +78,10 @@ export function AdminAuthProvider({ children }) {
       }
     });
     if (res.status === 401) {
+      const data = await res.clone().json().catch(() => ({}));
+      if (data.message === 'Current password is incorrect') {
+        return res;
+      }
       logout();
       throw new Error('Session expired');
     }
